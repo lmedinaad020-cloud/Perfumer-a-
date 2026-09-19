@@ -91,14 +91,24 @@
                         <input type="number" step="0.01" id="vtaMonto" placeholder="Ej: 25.00" required>
                     </div>
                     <div class="form-group">
-                        <label>Canal de Venta</label>
-                        <select id="vtaCanal">
-                            <option value="Tienda Local">Tienda Local</option>
-                            <option value="Instagram">Instagram</option>
-                            <option value="WhatsApp">WhatsApp</option>
-                            <option value="Delivery Presencial">Delivery Presencial</option>
+                        <label>Método de Pago</label>
+                        <select id="vtaMetodoPago">
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Yape">Yape / Plin</option>
+                            <option value="Tarjeta">Tarjeta</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Canal de Venta</label>
+                    <select id="vtaCanal">
+                        <option value="Tienda Local">Tienda Local</option>
+                        <option value="Alpha Móvil">Alpha Móvil</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Delivery Presencial">Delivery Presencial</option>
+                    </select>
                 </div>
 
                 <button type="submit">Procesar Venta y Descontar Stock</button>
@@ -287,6 +297,7 @@
             const tipoVenta = document.getElementById('vtaTipo').value;
             const perfumeId = document.getElementById('vtaPerfume').value;
             const monto = parseFloat(document.getElementById('vtaMonto').value);
+            const metodoPago = document.getElementById('vtaMetodoPago').value;
             const canal = document.getElementById('vtaCanal').value;
             const tamanoDecant = document.getElementById('vtaTamano').value;
 
@@ -297,15 +308,12 @@
                 if (perfumeObj.stock < 1) return alert('¡No hay stock disponible de este perfume sellado!');
                 await client.from('productos').update({ stock: perfumeObj.stock - 1 }).eq('id', perfumeObj.id);
             } else {
-                // Es Venta de Decant: Busca envase vacío de la capacidad seleccionada (3ml, 5ml o 10ml)
                 const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
                 if (!vacioObj || vacioObj.stock < 1) return alert(`¡No hay stock de frascos vacíos de ${tamanoDecant}!`);
                 
-                // Descuenta 1 envase vacío del tamaño seleccionado
                 await client.from('productos').update({ stock: vacioObj.stock - 1 }).eq('id', vacioObj.id);
             }
 
-            // Registrar Venta
             const registroVenta = {
                 producto_id: perfumeObj.id,
                 producto_nombre: perfumeObj.nombre,
@@ -313,7 +321,7 @@
                 tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
                 monto_total: monto,
                 vendedor_email: usuarioActual.email,
-                ubicacion_venta: canal
+                ubicacion_venta: `${canal} (${metodoPago})`
             };
 
             const { error } = await client.from('ventas').insert([registroVenta]);
