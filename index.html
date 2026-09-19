@@ -62,144 +62,320 @@
     <section id="sec-login" class="card login-card">
       <div class="brand"><img src="assets/alpha-logo.jpeg" alt="Alpha Perfumes y Decants"><h1 class="brand-name">VENTAS</h1><p class="brand-tagline">PLATAFORMA</p><div class="gold-rule"></div></div>
       <p style="text-align:center; margin:22px 0 16px;">Iniciar sesión</p>
-      <form id="formLogin"><div class="form-group"><label>Correo electrónico</label><input type="email" id="loginEmail" placeholder="usuario@email.com" required></div><div class="form-group"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••" required></div><button type="submit">Ingresar</button></form>
+      <form id="formLogin">
+        <div class="form-group"><label>Correo electrónico</label><input type="email" id="loginEmail" placeholder="usuario@email.com" required></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••" required></div>
+        <button type="submit">Ingresar</button>
+      </form>
     </section>
+
     <section id="sec-app" class="hidden">
-      <header class="header"><div class="brand"><img src="assets/alpha-logo.jpeg" alt="Alpha"><h1 class="brand-name">ALPHA</h1><p class="brand-tagline">PERFUMES Y DECANTS</p><div class="gold-rule"></div></div><p id="userLogged" style="margin:12px 0 0; font-size:.8rem;"></p><button onclick="cerrarSesion()" class="btn-sec" style="padding:6px 10px;font-size:.72rem;width:auto;margin-top:7px;">Cerrar sesión</button></header>
-      <nav class="nav-tabs"><button onclick="mostrarTab('venta')">🛒 Vender</button><button onclick="mostrarTab('stock')">📦 Inventario</button><button onclick="mostrarTab('historial')">📊 Historial</button></nav>
-      <div id="tab-venta" class="card"><h3>🛒 Nueva venta</h3><form id="formVenta"><div class="form-group"><label>Tipo de venta</label><select id="vtaTipo" onchange="actualizarOpcionesVenta()"><option value="Perfume Sellado">Perfume Sellado</option><option value="Decant">Decant (Fraccionado)</option></select></div><div class="form-group"><label>Seleccionar perfume</label><select id="vtaPerfume" required></select></div><div id="grpTamano" class="form-group hidden"><label>Tamaño de decant vendido</label><select id="vtaTamano"><option value="3ml">3ml</option><option value="5ml">5ml</option><option value="10ml">10ml</option></select></div><div class="grid-2"><div class="form-group"><label>Precio cobrado (S/)</label><input type="number" step="0.01" id="vtaMonto" placeholder="Ej: 25.00" required></div><div class="form-group"><label>Método de pago</label><select id="vtaMetodoPago"><option value="Efectivo">Efectivo</option><option value="Yape">Yape / Plin</option><option value="Tarjeta">Tarjeta</option></select></div></div><div class="form-group"><label>Canal de venta</label><select id="vtaCanal"><option value="Tienda Local">Tienda Local</option><option value="Alpha Móvil">Alpha Móvil</option><option value="Instagram">Instagram</option><option value="WhatsApp">WhatsApp</option><option value="Delivery Presencial">Delivery Presencial</option></select></div><button type="submit">Procesar venta y descontar stock</button></form></div>
-      <div id="tab-stock" class="card hidden"><h3>➕ Crear nuevo producto / envase</h3><form id="formStock"><div class="form-group"><label>Tipo de registro</label><select id="stkTipo" onchange="toggleCamposStock()"><option value="Perfume Sellado">Perfume Sellado</option><option value="Perfume para Decant">Perfume Abierto (Para Decants)</option><option value="Decant Vacío">Envase Decant Vacío</option></select></div><div class="form-group"><label>Nombre / descripción</label><input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Atomizador" required></div><div id="grpTamanoVacios" class="form-group hidden"><label>Capacidad del envase vacío</label><select id="stkTamanoVacios"><option value="3ml">3ml</option><option value="5ml">5ml</option><option value="10ml">10ml</option></select></div><div class="grid-2"><div class="form-group"><label>Precio base (S/)</label><input type="number" step="0.01" id="stkPrecio" value="0.00"></div><div class="form-group"><label>Cantidad inicial</label><input type="number" id="stkCantidad" required></div></div><button type="submit">Guardar nuevo en inventario</button></form><h3 style="margin-top:28px;">📦 Stock actual y reposición</h3><p style="font-size:.78rem;">Usa el botón verde para sumar unidades al stock existente.</p><div id="listaStock">Cargando...</div></div>
-      <div id="tab-historial" class="card hidden"><h3>📊 Historial de ventas</h3><div id="listaVentas">Cargando ventas...</div></div>
+      <header class="header">
+        <div class="brand"><img src="assets/alpha-logo.jpeg" alt="Alpha"><h1 class="brand-name">ALPHA</h1><p class="brand-tagline">PERFUMES Y DECANTS</p><div class="gold-rule"></div></div>
+        <p id="userLogged" style="margin:12px 0 0; font-size:.8rem;"></p>
+        <button onclick="cerrarSesion()" class="btn-sec" style="padding:6px 10px;font-size:.72rem;width:auto;margin-top:7px;">Cerrar sesión</button>
+      </header>
+
+      <nav class="nav-tabs">
+        <button onclick="mostrarTab('venta')">🛒 Vender</button>
+        <button onclick="mostrarTab('stock')">📦 Inventario</button>
+        <button onclick="mostrarTab('historial')">📊 Historial</button>
+      </nav>
+
+      <!-- TAB VENTA -->
+      <div id="tab-venta" class="card">
+        <h3>🛒 Nueva venta</h3>
+        <form id="formVenta">
+          <div class="form-group">
+            <label>Tipo de venta</label>
+            <select id="vtaTipo" onchange="actualizarOpcionesVenta()">
+              <option value="Perfume Sellado">Perfume Sellado</option>
+              <option value="Decant">Decant (Fraccionado)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Seleccionar perfume</label>
+            <select id="vtaPerfume" required></select>
+          </div>
+          <div id="grpTamano" class="form-group hidden">
+            <label>Tamaño de decant vendido</label>
+            <select id="vtaTamano">
+              <option value="3ml">3ml</option>
+              <option value="5ml">5ml</option>
+              <option value="10ml">10ml</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Precio cobrado (S/)</label>
+              <input type="number" step="0.01" id="vtaMonto" placeholder="Ej: 25.00" required>
+            </div>
+            <div class="form-group">
+              <label>Método de pago</label>
+              <select id="vtaMetodoPago">
+                <option value="Efectivo">Efectivo</option>
+                <option value="Yape">Yape / Plin</option>
+                <option value="Tarjeta">Tarjeta</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Canal de venta</label>
+            <select id="vtaCanal">
+              <option value="Tienda Local">Tienda Local</option>
+              <option value="Alpha Móvil">Alpha Móvil</option>
+              <option value="Instagram">Instagram</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Delivery Presencial">Delivery Presencial</option>
+            </select>
+          </div>
+          <button type="submit">Procesar venta y descontar stock</button>
+        </form>
+      </div>
+
+      <!-- TAB STOCK -->
+      <div id="tab-stock" class="card hidden">
+        <h3>➕ Crear nuevo producto / envase</h3>
+        <form id="formStock">
+          <div class="form-group">
+            <label>Tipo de registro</label>
+            <select id="stkTipo" onchange="toggleCamposStock()">
+              <option value="Perfume Sellado">Perfume Sellado</option>
+              <option value="Perfume para Decant">Perfume Abierto (Para Decants)</option>
+              <option value="Decant Vacío">Envase Decant Vacío</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Nombre / descripción</label>
+            <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Atomizador" required>
+          </div>
+          <div id="grpTamanoVacios" class="form-group hidden">
+            <label>Capacidad del envase vacío</label>
+            <select id="stkTamanoVacios">
+              <option value="3ml">3ml</option>
+              <option value="5ml">5ml</option>
+              <option value="10ml">10ml</option>
+            </select>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Precio Base (S/)</label>
+              <input type="number" step="0.01" id="stkPrecio" value="0.00">
+            </div>
+            <div class="form-group">
+              <label>Cantidad inicial</label>
+              <input type="number" id="stkCantidad" required>
+            </div>
+          </div>
+          <button type="submit">Guardar nuevo en inventario</button>
+        </form>
+        <h3 style="margin-top:28px;">📦 Stock actual y reposición</h3>
+        <p style="font-size:.78rem;">Usa el botón verde para sumar unidades al stock existente.</p>
+        <div id="listaStock">Cargando...</div>
+      </div>
+
+      <!-- TAB HISTORIAL -->
+      <div id="tab-historial" class="card hidden">
+        <h3>📊 Historial de ventas</h3>
+        <div id="listaVentas">Cargando ventas...</div>
+      </div>
     </section>
   </main>
+
   <script>
-const SUPABASE_URL='https://zmvuueizrehqibjjcbgd.supabase.co', SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
-const client=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-let usuarioActual=null,listaProductos=[];
-document.getElementById('formLogin').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const {
-    data,error
-  }
-  =await client.auth.signInWithPassword({
-    email:loginEmail.value,password:loginPass.value
-  });
-  if(error)alert('Error al ingresar: '+error.message);
-  else{
-    usuarioActual=data.user;
-    iniciarApp();
-  }
-});
-function iniciarApp(){
-  document.getElementById('sec-login').classList.add('hidden');
-  document.getElementById('sec-app').classList.remove('hidden');
-  userLogged.innerText=`Usuario: ${usuarioActual.email}`;
-  cargarTodo();
-}
-async function cerrarSesion(){
-  await client.auth.signOut();
-  location.reload();
-}
-function mostrarTab(tab){
-  ['venta','stock','historial'].forEach(t=>document.getElementById(`tab-${t}`).classList.add('hidden'));
-  document.getElementById(`tab-${tab}`).classList.remove('hidden');
-}
-async function cargarTodo(){
-  const {
-    data:prods
-  }
-  =await client.from('productos').select('*').order('id',{
-    ascending:false
-  });
-  listaProductos=prods||[];
-  renderizarStock();
-  actualizarOpcionesVenta();
-  cargarHistorial();
-}
-function toggleCamposStock(){
-  grpTamanoVacios.classList.toggle('hidden',stkTipo.value!=='Decant Vacío');
-}
-function renderizarStock(){
-  listaStock.innerHTML=!listaProductos.length?'<p>Sin productos registrados.</p>':listaProductos.map(p=>`<div class="stock-item"><div><span class="badge">${p.tipo} ${p.tamano?`(${
-    p.tamano
-  })`:''}</span><h4 style="margin:7px 0 3px;">${p.nombre}</h4><p class="price" style="margin:0;font-size:.8rem;">Precio: S/ ${p.precio}</p><p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong></p></div><button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar stock</button></div>`).join('');
-}
-async function sumarStock(id,stockActual){
-  const cantidad=prompt('¿Cuántas unidades deseas sumar al stock existente?');
-  if(!cantidad||isNaN(cantidad)||parseInt(cantidad)<=0)return;
-  const nuevoStock=stockActual+parseInt(cantidad),{
-    error
-  }
-  =await client.from('productos').update({
-    stock:nuevoStock
-  }).eq('id',id);
-  if(error)alert('Error al actualizar stock: '+error.message);
-  else{
-    alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
-    cargarTodo();
-  }
-}
-function actualizarOpcionesVenta(){
-  const isDecant=vtaTipo.value==='Decant';
-  grpTamano.classList.toggle('hidden',!isDecant);
-  const tipo=isDecant?'Perfume para Decant':'Perfume Sellado';
-  vtaPerfume.innerHTML=listaProductos.filter(p=>p.tipo===tipo).map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
-}
-document.getElementById('formStock').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const tipo=stkTipo.value,nuevo={
-    nombre:stkNombre.value,tipo,tamano:tipo==='Decant Vacío'?stkTamanoVacios.value:null,precio:parseFloat(stkPrecio.value)||0,stock:parseInt(stkCantidad.value)
-  };
-  const {
-    error
-  }
-  =await client.from('productos').insert([nuevo]);
-  if(error)alert('Error: '+error.message);
-  else{
-    alert('Guardado correctamente');
-    formStock.reset();
-    cargarTodo();
-  }
-});
-document.getElementById('formVenta').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const tipoVenta=vtaTipo.value,perfumeObj=listaProductos.find(p=>p.id==vtaPerfume.value),tamanoDecant=vtaTamano.value;
-  if(!perfumeObj)return alert('Selecciona un perfume válido.');
-  if(tipoVenta==='Perfume Sellado'){
-    if(perfumeObj.stock<1)return alert('¡No hay stock disponible de este perfume sellado!');
-    await client.from('productos').update({
-      stock:perfumeObj.stock-1
-    }).eq('id',perfumeObj.id);
-  }
-  else{
-    const vacioObj=listaProductos.find(p=>p.tipo==='Decant Vacío'&&p.tamano===tamanoDecant);
-    if(!vacioObj||vacioObj.stock<1)return alert(`¡No hay stock de frascos vacíos de ${tamanoDecant}!`);
-    await client.from('productos').update({
-      stock:vacioObj.stock-1
-    }).eq('id',vacioObj.id);
-  }
-  const venta={
-    producto_id:perfumeObj.id,producto_nombre:perfumeObj.nombre,tipo_venta:tipoVenta,tamano:tipoVenta==='Decant'?tamanoDecant:'Frasco Entero',monto_total:parseFloat(vtaMonto.value),vendedor_email:usuarioActual.email,ubicacion_venta:`${vtaCanal.value} (${vtaMetodoPago.value})`
-  },{
-    error
-  }
-  =await client.from('ventas').insert([venta]);
-  if(error)alert('Error al registrar la venta: '+error.message);
-  else{
-    alert('¡Venta realizada con éxito!');
-    formVenta.reset();
-    cargarTodo();
-  }
-});
-async function cargarHistorial(){
-  const {
-    data:ventas
-  }
-  =await client.from('ventas').select('*').order('fecha',{
-    ascending:false
-  });
-  listaVentas.innerHTML=!ventas||!ventas.length?'<p>No hay ventas registradas aún.</p>':ventas.map(v=>`<div class="stock-item"><div><p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleString()}</p><h4 style="margin:5px 0;">${v.producto_nombre} <span class="badge">${v.tamano}</span></h4><p class="price" style="margin:0;font-size:.83rem;">Monto: S/ ${v.monto_total}</p><p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p></div></div>`).join('');
-}
+    const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 🔒 CORREOS AUTORIZADOS PARA VER PRECIO BASE (ADMINISTRADORES)
+    const ADMIN_EMAILS = [
+      'diego@alpha.com',
+      'luis@alpha.com',
+      'mau@alpha.com'
+    ];
+
+    let usuarioActual = null;
+    let listaProductos = [];
+
+    function esAdmin() {
+      return usuarioActual && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(usuarioActual.email.toLowerCase());
+    }
+
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPass').value;
+      
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error) alert('Error al ingresar: ' + error.message);
+      else {
+        usuarioActual = data.user;
+        iniciarApp();
+      }
+    });
+
+    function iniciarApp() {
+      document.getElementById('sec-login').classList.add('hidden');
+      document.getElementById('sec-app').classList.remove('hidden');
+      document.getElementById('userLogged').innerText = `Usuario: ${usuarioActual.email} ${esAdmin() ? ' (ADMIN)' : ''}`;
+      cargarTodo();
+    }
+
+    async function cerrarSesion() {
+      await client.auth.signOut();
+      location.reload();
+    }
+
+    function mostrarTab(tab) {
+      ['venta', 'stock', 'historial'].forEach(t => document.getElementById(`tab-${t}`).classList.add('hidden'));
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+    }
+
+    async function cargarTodo() {
+      const { data: prods } = await client.from('productos').select('*').order('id', { ascending: false });
+      listaProductos = prods || [];
+      renderizarStock();
+      actualizarOpcionesVenta();
+      cargarHistorial();
+    }
+
+    function toggleCamposStock() {
+      const stkTipoVal = document.getElementById('stkTipo').value;
+      document.getElementById('grpTamanoVacios').classList.toggle('hidden', stkTipoVal !== 'Decant Vacío');
+    }
+
+    function renderizarStock() {
+      const contenedor = document.getElementById('listaStock');
+      if (!listaProductos.length) {
+        contenedor.innerHTML = '<p>Sin productos registrados.</p>';
+        return;
+      }
+      contenedor.innerHTML = listaProductos.map(p => `
+        <div class="stock-item">
+          <div>
+            <span class="badge">${p.tipo} ${p.tamano ? `(${p.tamano})` : ''}</span>
+            <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
+            
+            <!-- PRECIO BASE: Solo visible si el correo pertenece a la lista ADMIN_EMAILS -->
+            ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
+            
+            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong></p>
+          </div>
+          <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
+        </div>
+      `).join('');
+    }
+
+    async function sumarStock(id, stockActual) {
+      const cantidad = prompt('¿Cuántas unidades deseas sumar al stock existente?');
+      if (!cantidad || isNaN(cantidad) || parseInt(cantidad) <= 0) return;
+
+      const nuevoStock = stockActual + parseInt(cantidad);
+      const { error } = await client.from('productos').update({ stock: nuevoStock }).eq('id', id);
+
+      if (error) alert('Error al actualizar stock: ' + error.message);
+      else {
+        alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
+        cargarTodo();
+      }
+    }
+
+    function actualizarOpcionesVenta() {
+      const vtaTipoVal = document.getElementById('vtaTipo').value;
+      const isDecant = vtaTipoVal === 'Decant';
+      document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
+      
+      const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
+      const filtrados = listaProductos.filter(p => p.tipo === tipo);
+      
+      const selectPerfume = document.getElementById('vtaPerfume');
+      if (filtrados.length === 0) {
+        selectPerfume.innerHTML = `<option value="">-- Sin productos de este tipo --</option>`;
+      } else {
+        selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+      }
+    }
+
+    document.getElementById('formStock').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tipo = document.getElementById('stkTipo').value;
+      const nuevo = {
+        nombre: document.getElementById('stkNombre').value,
+        tipo: tipo,
+        tamano: tipo === 'Decant Vacío' ? document.getElementById('stkTamanoVacios').value : null,
+        precio: parseFloat(document.getElementById('stkPrecio').value) || 0,
+        stock: parseInt(document.getElementById('stkCantidad').value)
+      };
+
+      const { error } = await client.from('productos').insert([nuevo]);
+      if (error) alert('Error: ' + error.message);
+      else {
+        alert('Guardado correctamente');
+        document.getElementById('formStock').reset();
+        toggleCamposStock();
+        cargarTodo();
+      }
+    });
+
+    document.getElementById('formVenta').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const tipoVenta = document.getElementById('vtaTipo').value;
+      const perfumeId = document.getElementById('vtaPerfume').value;
+      const tamanoDecant = document.getElementById('vtaTamano').value;
+      const monto = parseFloat(document.getElementById('vtaMonto').value);
+      const canal = document.getElementById('vtaCanal').value;
+      const metodoPago = document.getElementById('vtaMetodoPago').value;
+
+      const perfumeObj = listaProductos.find(p => p.id == perfumeId);
+      if (!perfumeObj) return alert('Selecciona un perfume válido.');
+
+      if (tipoVenta === 'Perfume Sellado') {
+        if (perfumeObj.stock < 1) return alert('¡No hay stock disponible de este perfume sellado!');
+        await client.from('productos').update({ stock: perfumeObj.stock - 1 }).eq('id', perfumeObj.id);
+      } else {
+        const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
+        if (!vacioObj || vacioObj.stock < 1) return alert(`¡No hay stock de frascos vacíos de ${tamanoDecant}!`);
+        await client.from('productos').update({ stock: vacioObj.stock - 1 }).eq('id', vacioObj.id);
+      }
+
+      const venta = {
+        producto_id: perfumeObj.id,
+        producto_nombre: perfumeObj.nombre,
+        tipo_venta: tipoVenta,
+        tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
+        monto_total: monto,
+        vendedor_email: usuarioActual.email,
+        ubicacion_venta: `${canal} (${metodoPago})`
+      };
+
+      const { error } = await client.from('ventas').insert([venta]);
+      if (error) alert('Error al registrar la venta: ' + error.message);
+      else {
+        alert('¡Venta realizada con éxito!');
+        document.getElementById('formVenta').reset();
+        actualizarOpcionesVenta();
+        cargarTodo();
+      }
+    });
+
+    async function cargarHistorial() {
+      const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
+      const contenedor = document.getElementById('listaVentas');
+      if (!ventas || !ventas.length) {
+        contenedor.innerHTML = '<p>No hay ventas registradas aún.</p>';
+        return;
+      }
+      contenedor.innerHTML = ventas.map(v => `
+        <div class="stock-item">
+          <div>
+            <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleString()}</p>
+            <h4 style="margin:5px 0;">${v.producto_nombre} <span class="badge">${v.tamano}</span></h4>
+            <p class="price" style="margin:0;font-size:.83rem;">Monto: S/ ${v.monto_total}</p>
+            <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
+          </div>
+        </div>
+      `).join('');
+    }
   </script>
 </body>
 </html>
