@@ -173,7 +173,7 @@
           <button type="submit">Guardar nuevo en inventario</button>
         </form>
         <h3 style="margin-top:28px;">📦 Stock actual y reposición</h3>
-        <p style="font-size:.78rem;">Usa el botón azul para abrir un perfume sellado y el rojo para descontar 1 botella vacía.</p>
+        <p style="font-size:.78rem;">Usa el botón azul para abrir un perfume sellado y pasar 1 unidad a Decants.</p>
         <div id="listaStock">Cargando...</div>
       </div>
 
@@ -271,7 +271,7 @@
             <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
             
             <!-- Botón para abrir perfume sellado -->
-            ${esSellado && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.precio})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
+            ${esSellado && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
             
             <!-- Botón para descontar 1 unidad agotada -->
             ${esAgotable && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
@@ -280,34 +280,42 @@
       `}).join('');
     }
 
-    // 🍾 ABRIR PERFUME SELLADO
-    async function abrirPerfumeSellado(idSellado, nombrePerfume, precioBase) {
-      const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${nombrePerfume}"?\n\n- Se descontará 1 unidad del stock sellado.\n- Se creará/añadirá 1 unidad como "Perfume para Decant".`);
-      if (!confirmar) return;
-
+    // 🍾 ABRIR PERFUME SELLADO (Sincronización garantizada por ID de Supabase)
+    async function abrirPerfumeSellado(idSellado) {
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
 
-      // 1. Descontar 1 del Perfume Sellado
-      const { error: err1 } = await client.from('productos').update({ stock: perfumeSelladoObj.stock - 1 }).eq('id', idSellado);
-      if (err1) return alert('Error al descontar stock sellado: ' + err1.message);
+      const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${perfumeSelladoObj.nombre}"?\n\n- Se descontará 1 unidad de Perfumes Sellados.\n- Se sumará 1 unidad a "Perfume para Decant".`);
+      if (!confirmar) return;
 
-      // 2. Buscar si ya existe la categoría "Perfume para Decant" para este perfume
-      const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === nombrePerfume.toLowerCase());
-
-      if (perfumeAbiertoObj) {
-        await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
-      } else {
-        await client.from('productos').insert([{
-          nombre: nombrePerfume,
-          tipo: 'Perfume para Decant',
-          tamano: null,
-          precio: precioBase,
-          stock: 1
-        }]);
+      // 1. Descontar inmediatamente en la base de datos de Supabase por ID
+      const nuevoStockSellado = perfumeSelladoObj.stock - 1;
+      const { error: err1 } = await client.from('productos').update({ stock: nuevoStockSellado }).eq('id', idSellado);
+      
+      if (err1) {
+        return alert('Error al actualizar stock sellado: ' + err1.message);
       }
 
-      alert(`¡"${nombrePerfume}" se abrió con éxito y pasó a la lista para Decants!`);
+      // 2. Buscar o crear el registro en "Perfume para Decant"
+      const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === perfumeSelladoObj.nombre.toLowerCase());
+
+      if (perfumeAbiertoObj) {
+        // Si existe, le sumamos 1 unidad
+        const { error: err2 } = await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
+        if (err2) alert('Error al sumar stock abierto: ' + err2.message);
+      } else {
+        // Si no existe, creamos el registro abierto
+        const { error: err3 } = await client.from('productos').insert([{
+          nombre: perfumeSelladoObj.nombre,
+          tipo: 'Perfume para Decant',
+          tamano: null,
+          precio: perfumeSelladoObj.precio,
+          stock: 1
+        }]);
+        if (err3) alert('Error al registrar nuevo perfume abierto: ' + err3.message);
+      }
+
+      alert(`¡"${perfumeSelladoObj.nombre}" se abrió correctamente! Quedan ${nuevoStockSellado} sellados.`);
       cargarTodo();
     }
 
