@@ -173,7 +173,7 @@
           <button type="submit">Guardar nuevo en inventario</button>
         </form>
         <h3 style="margin-top:28px;">📦 Stock actual y reposición</h3>
-        <p style="font-size:.78rem;">Usa el botón azul para abrir un perfume sellado y pasar 1 unidad a Decants.</p>
+        <p style="font-size:.78rem;">Usa el botón azul para abrir perfumes sellados o el verde para reposiciones manuales.</p>
         <div id="listaStock">Cargando...</div>
       </div>
 
@@ -280,7 +280,7 @@
       `}).join('');
     }
 
-    // 🍾 ABRIR PERFUME SELLADO (Sincronización garantizada por ID de Supabase)
+    // 🍾 ABRIR PERFUME SELLADO (DESDE BOTÓN AZUL)
     async function abrirPerfumeSellado(idSellado) {
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
@@ -288,38 +288,63 @@
       const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${perfumeSelladoObj.nombre}"?\n\n- Se descontará 1 unidad de Perfumes Sellados.\n- Se sumará 1 unidad a "Perfume para Decant".`);
       if (!confirmar) return;
 
-      // 1. Descontar inmediatamente en la base de datos de Supabase por ID
       const nuevoStockSellado = perfumeSelladoObj.stock - 1;
       const { error: err1 } = await client.from('productos').update({ stock: nuevoStockSellado }).eq('id', idSellado);
       
-      if (err1) {
-        return alert('Error al actualizar stock sellado: ' + err1.message);
-      }
+      if (err1) return alert('Error al actualizar stock sellado: ' + err1.message);
 
-      // 2. Buscar o crear el registro en "Perfume para Decant"
       const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === perfumeSelladoObj.nombre.toLowerCase());
 
       if (perfumeAbiertoObj) {
-        // Si existe, le sumamos 1 unidad
-        const { error: err2 } = await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
-        if (err2) alert('Error al sumar stock abierto: ' + err2.message);
+        await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
       } else {
-        // Si no existe, creamos el registro abierto
-        const { error: err3 } = await client.from('productos').insert([{
+        await client.from('productos').insert([{
           nombre: perfumeSelladoObj.nombre,
           tipo: 'Perfume para Decant',
           tamano: null,
           precio: perfumeSelladoObj.precio,
           stock: 1
         }]);
-        if (err3) alert('Error al registrar nuevo perfume abierto: ' + err3.message);
       }
 
       alert(`¡"${perfumeSelladoObj.nombre}" se abrió correctamente! Quedan ${nuevoStockSellado} sellados.`);
       cargarTodo();
     }
 
+    // ➕ SUMAR STOCK (DESDE BOTÓN VERDE)
     async function sumarStock(id, stockActual) {
+      const producto = listaProductos.find(p => p.id === id);
+      if (!producto) return;
+
+      // Si es un Perfume para Decants, consultamos si se debe descontar de la botella sellada
+      if (producto.tipo === 'Perfume para Decant') {
+        const perfumeSellado = listaProductos.find(p => p.tipo === 'Perfume Sellado' && p.nombre.toLowerCase() === producto.nombre.toLowerCase());
+
+        if (perfumeSellado) {
+          const cantidadStr = prompt(`¿Cuántas botellas selladas de "${perfumeSellado.nombre}" vas a ABRIR para decants?\n\nStock sellado disponible: ${perfumeSellado.stock}`);
+          if (!cantidadStr || isNaN(cantidadStr) || parseInt(cantidadStr) <= 0) return;
+
+          const cant = parseInt(cantidadStr);
+
+          if (perfumeSellado.stock < cant) {
+            return alert(`¡No hay suficiente stock sellado! Solo tienes ${perfumeSellado.stock} unidades de "${perfumeSellado.nombre}".`);
+          }
+
+          // 1. Descontar de perfumes sellados
+          const { error: errSellado } = await client.from('productos').update({ stock: perfumeSellado.stock - cant }).eq('id', perfumeSellado.id);
+          if (errSellado) return alert('Error al descontar stock sellado: ' + errSellado.message);
+
+          // 2. Sumar al perfume abierto
+          const { error: errAbierto } = await client.from('productos').update({ stock: stockActual + cant }).eq('id', id);
+          if (errAbierto) return alert('Error al sumar stock para decants: ' + errAbierto.message);
+
+          alert(`¡Se abrieron ${cant} botella(s) de "${producto.nombre}"!\n- Sellados restantes: ${perfumeSellado.stock - cant}\n- Abiertos totales: ${stockActual + cant}`);
+          cargarTodo();
+          return;
+        }
+      }
+
+      // Reposición estándar (para Perfumes Sellados o Envases Vacíos)
       const cantidad = prompt('¿Cuántas unidades deseas sumar al stock existente?');
       if (!cantidad || isNaN(cantidad) || parseInt(cantidad) <= 0) return;
 
@@ -333,7 +358,7 @@
       }
     }
 
-    // 🚫 DESCONTAR 1 UNIDAD VACÍA (REDUCIR STOCK EN 1)
+    // 🚫 DESCONTAR 1 UNIDAD VACÍA
     async function marcarComoVacio(id, nombre, stockActual) {
       if (stockActual <= 0) return alert(`"${nombre}" ya no tiene unidades disponibles.`);
 
