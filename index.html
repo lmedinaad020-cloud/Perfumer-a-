@@ -53,13 +53,22 @@
     .nav-tabs { display: flex; gap: 9px; margin: 0 0 16px; }
     .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; }
     .nav-tabs button:hover { border-color: var(--gold); }
-    .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.28); border-radius: 9px; border: 1px solid rgba(246,240,231,.09); }
+    
+    /* ITEMS DE STOCK MEJORADOS CON IMAGEN Y TARJETA */
+    .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.45); border-radius: 11px; border: 1px solid rgba(246,240,231,.12); transition: border-color 0.2s; }
+    .stock-item:hover { border-color: var(--gold); }
+    .stock-info-wrapper { display: flex; align-items: center; gap: 14px; }
+    .product-img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); flex-shrink: 0; }
     .stock-actions { display: flex; gap: 6px; flex-direction: column; align-items: flex-end; }
     
-    /* ESTILOS PARA CATEGORÍAS SEPARADAS DE INVENTARIO */
     .section-title { margin-top: 25px; margin-bottom: 10px; font-size: 1rem; color: var(--gold-light); border-bottom: 1px solid var(--border); padding-bottom: 5px; font-family: Georgia, serif; }
     .empty-msg { font-size: 0.8rem; color: var(--muted); font-style: italic; margin: 8px 0; }
     
+    /* BARRA DE BÚSQUEDA */
+    .search-box { position: relative; margin: 18px 0 10px; }
+    .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
+    .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
+
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
     @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } }
@@ -157,6 +166,10 @@
             <label>Nombre / descripción</label>
             <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Atomizador" required>
           </div>
+          <div class="form-group">
+            <label>URL de Imagen del Perfume (Opcional)</label>
+            <input type="url" id="stkImagen" placeholder="https://ejemplo.com/perfume.jpg">
+          </div>
           <div id="grpTamanoVacios" class="form-group hidden">
             <label>Capacidad del envase vacío</label>
             <select id="stkTamanoVacios">
@@ -180,6 +193,11 @@
 
         <h3 style="margin-top:28px;">📦 Control de Inventario Categorizado</h3>
         
+        <!-- BARRA DE BÚSQUEDA -->
+        <div class="search-box">
+          <input type="text" id="inputBusqueda" placeholder="Buscar perfume por nombre..." oninput="filtrarInventario()">
+        </div>
+
         <!-- SECCIÓN 1: PERFUMES SELLADOS -->
         <div class="section-title">🧴 Perfumes Sellados</div>
         <div id="listaSellados">Cargando...</div>
@@ -206,7 +224,6 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 🔒 CORREOS AUTORIZADOS PARA VER PRECIO BASE
     const ADMIN_EMAILS = [
       'diego@alpha.com',
       'luis@alpha.com',
@@ -215,6 +232,7 @@
 
     let usuarioActual = null;
     let listaProductos = [];
+    const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
 
     function esAdmin() {
       return usuarioActual && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(usuarioActual.email.toLowerCase());
@@ -263,21 +281,32 @@
       document.getElementById('grpTamanoVacios').classList.toggle('hidden', stkTipoVal !== 'Decant Vacío');
     }
 
-    // RENDERIZADO DIVIDIDO POR CATEGORÍAS DE INVENTARIO
+    function filtrarInventario() {
+      renderizarStock();
+    }
+
+    // RENDERIZADO CON BÚSQUEDA E IMÁGENES
     function renderizarStock() {
-      const sellados = listaProductos.filter(p => p.tipo === 'Perfume Sellado');
-      const abiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant');
-      const vacios = listaProductos.filter(p => p.tipo === 'Decant Vacío');
+      const query = document.getElementById('inputBusqueda').value.toLowerCase().trim();
+
+      const filtradosGlobal = listaProductos.filter(p => p.nombre.toLowerCase().includes(query));
+
+      const sellados = filtradosGlobal.filter(p => p.tipo === 'Perfume Sellado');
+      const abiertos = filtradosGlobal.filter(p => p.tipo === 'Perfume para Decant');
+      const vacios = filtradosGlobal.filter(p => p.tipo === 'Decant Vacío');
 
       // 1. Render Sellados
       const contSellados = document.getElementById('listaSellados');
-      contSellados.innerHTML = !sellados.length ? '<p class="empty-msg">No hay perfumes sellados registrados.</p>' : sellados.map(p => `
+      contSellados.innerHTML = !sellados.length ? '<p class="empty-msg">No hay perfumes sellados que coincidan.</p>' : sellados.map(p => `
         <div class="stock-item">
-          <div>
-            <span class="badge">SELLADO</span>
-            <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
-            ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
+          <div class="stock-info-wrapper">
+            <img src="${p.imagen_url || IMG_DEFAULT}" class="product-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
+            <div>
+              <span class="badge">SELLADO</span>
+              <h4 style="margin:5px 0 3px;">${p.nombre}</h4>
+              ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
+              <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
+            </div>
           </div>
           <div class="stock-actions">
             <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
@@ -288,13 +317,16 @@
 
       // 2. Render Abiertos
       const contAbiertos = document.getElementById('listaAbiertos');
-      contAbiertos.innerHTML = !abiertos.length ? '<p class="empty-msg">No hay perfumes abiertos para decants.</p>' : abiertos.map(p => `
+      contAbiertos.innerHTML = !abiertos.length ? '<p class="empty-msg">No hay perfumes abiertos que coincidan.</p>' : abiertos.map(p => `
         <div class="stock-item">
-          <div>
-            <span class="badge">ABIERTO / DECANT</span>
-            <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
-            ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
+          <div class="stock-info-wrapper">
+            <img src="${p.imagen_url || IMG_DEFAULT}" class="product-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
+            <div>
+              <span class="badge">ABIERTO / DECANT</span>
+              <h4 style="margin:5px 0 3px;">${p.nombre}</h4>
+              ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
+              <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
+            </div>
           </div>
           <div class="stock-actions">
             <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Abrir otro sellado</button>
@@ -305,13 +337,16 @@
 
       // 3. Render Envases Vacíos
       const contVacios = document.getElementById('listaVacios');
-      contVacios.innerHTML = !vacios.length ? '<p class="empty-msg">No hay envases vacíos registrados.</p>' : vacios.map(p => `
+      contVacios.innerHTML = !vacios.length ? '<p class="empty-msg">No hay envases vacíos que coincidan.</p>' : vacios.map(p => `
         <div class="stock-item">
-          <div>
-            <span class="badge">ENVASE ${p.tamano ? `(${p.tamano})` : ''}</span>
-            <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
-            ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
+          <div class="stock-info-wrapper">
+            <img src="${p.imagen_url || IMG_DEFAULT}" class="product-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
+            <div>
+              <span class="badge">ENVASE ${p.tamano ? `(${p.tamano})` : ''}</span>
+              <h4 style="margin:5px 0 3px;">${p.nombre}</h4>
+              ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
+              <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
+            </div>
           </div>
           <div class="stock-actions">
             <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
@@ -321,7 +356,7 @@
       `).join('');
     }
 
-    // 🍾 ABRIR PERFUME SELLADO
+    // 🍾 ABRIR PERFUME SELLADO (CON HERENCIA DE IMAGEN)
     async function abrirPerfumeSellado(idSellado) {
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
@@ -344,7 +379,8 @@
           tipo: 'Perfume para Decant',
           tamano: null,
           precio: perfumeSelladoObj.precio,
-          stock: 1
+          stock: 1,
+          imagen_url: perfumeSelladoObj.imagen_url
         }]);
       }
 
@@ -432,11 +468,12 @@
       }
     }
 
-    // CREACIÓN NUEVO PRODUCTO
+    // CREACIÓN NUEVO PRODUCTO CON URL DE IMAGEN
     document.getElementById('formStock').addEventListener('submit', async (e) => {
       e.preventDefault();
       const tipo = document.getElementById('stkTipo').value;
       const nombreInput = document.getElementById('stkNombre').value.trim();
+      const imagenInput = document.getElementById('stkImagen').value.trim();
       const cantidadReg = parseInt(document.getElementById('stkCantidad').value) || 1;
       const precioInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
 
@@ -445,7 +482,8 @@
         tipo: tipo,
         tamano: tipo === 'Decant Vacío' ? document.getElementById('stkTamanoVacios').value : null,
         precio: precioInput,
-        stock: cantidadReg
+        stock: cantidadReg,
+        imagen_url: imagenInput || null
       };
 
       const { error } = await client.from('productos').insert([nuevo]);
