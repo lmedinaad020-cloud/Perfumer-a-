@@ -55,6 +55,11 @@
     .nav-tabs button:hover { border-color: var(--gold); }
     .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.28); border-radius: 9px; border: 1px solid rgba(246,240,231,.09); }
     .stock-actions { display: flex; gap: 6px; flex-direction: column; align-items: flex-end; }
+    
+    /* ESTILOS PARA CATEGORÍAS SEPARADAS DE INVENTARIO */
+    .section-title { margin-top: 25px; margin-bottom: 10px; font-size: 1rem; color: var(--gold-light); border-bottom: 1px solid var(--border); padding-bottom: 5px; font-family: Georgia, serif; }
+    .empty-msg { font-size: 0.8rem; color: var(--muted); font-style: italic; margin: 8px 0; }
+    
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
     @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } }
@@ -172,9 +177,20 @@
           </div>
           <button type="submit">Guardar nuevo en inventario</button>
         </form>
-        <h3 style="margin-top:28px;">📦 Stock actual y reposición</h3>
-        <p style="font-size:.78rem;">Usa el botón azul para abrir perfumes sellados o el verde para reposiciones manuales.</p>
-        <div id="listaStock">Cargando...</div>
+
+        <h3 style="margin-top:28px;">📦 Control de Inventario Categorizado</h3>
+        
+        <!-- SECCIÓN 1: PERFUMES SELLADOS -->
+        <div class="section-title">🧴 Perfumes Sellados</div>
+        <div id="listaSellados">Cargando...</div>
+
+        <!-- SECCIÓN 2: PERFUMES ABIERTOS PARA DECANTS -->
+        <div class="section-title">🧪 Perfumes Abiertos (para Decants)</div>
+        <div id="listaAbiertos">Cargando...</div>
+
+        <!-- SECCIÓN 3: ENVASE DECANT VACÍOS -->
+        <div class="section-title">📦 Envases Decants Vacíos</div>
+        <div id="listaVacios">Cargando...</div>
       </div>
 
       <!-- TAB HISTORIAL -->
@@ -247,40 +263,65 @@
       document.getElementById('grpTamanoVacios').classList.toggle('hidden', stkTipoVal !== 'Decant Vacío');
     }
 
+    // RENDERIZADO DIVIDIDO POR CATEGORÍAS DE INVENTARIO
     function renderizarStock() {
-      const contenedor = document.getElementById('listaStock');
-      if (!listaProductos.length) {
-        contenedor.innerHTML = '<p>Sin productos registrados.</p>';
-        return;
-      }
-      contenedor.innerHTML = listaProductos.map(p => {
-        const esSellado = p.tipo === 'Perfume Sellado';
-        const esAgotable = p.tipo === 'Perfume para Decant' || p.tipo === 'Decant Vacío';
-        
-        return `
+      const sellados = listaProductos.filter(p => p.tipo === 'Perfume Sellado');
+      const abiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant');
+      const vacios = listaProductos.filter(p => p.tipo === 'Decant Vacío');
+
+      // 1. Render Sellados
+      const contSellados = document.getElementById('listaSellados');
+      contSellados.innerHTML = !sellados.length ? '<p class="empty-msg">No hay perfumes sellados registrados.</p>' : sellados.map(p => `
         <div class="stock-item">
           <div>
-            <span class="badge">${p.tipo} ${p.tamano ? `(${p.tamano})` : ''}</span>
+            <span class="badge">SELLADO</span>
             <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
-            
             ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-            
-            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
+            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
           </div>
           <div class="stock-actions">
             <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
-            
-            <!-- Botón para abrir perfume sellado -->
-            ${esSellado && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
-            
-            <!-- Botón para descontar 1 unidad agotada -->
-            ${esAgotable && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
+            ${p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
           </div>
         </div>
-      `}).join('');
+      `).join('');
+
+      // 2. Render Abiertos
+      const contAbiertos = document.getElementById('listaAbiertos');
+      contAbiertos.innerHTML = !abiertos.length ? '<p class="empty-msg">No hay perfumes abiertos para decants.</p>' : abiertos.map(p => `
+        <div class="stock-item">
+          <div>
+            <span class="badge">ABIERTO / DECANT</span>
+            <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
+            ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
+            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
+          </div>
+          <div class="stock-actions">
+            <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Abrir otro sellado</button>
+            ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      // 3. Render Envases Vacíos
+      const contVacios = document.getElementById('listaVacios');
+      contVacios.innerHTML = !vacios.length ? '<p class="empty-msg">No hay envases vacíos registrados.</p>' : vacios.map(p => `
+        <div class="stock-item">
+          <div>
+            <span class="badge">ENVASE ${p.tamano ? `(${p.tamano})` : ''}</span>
+            <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
+            ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
+            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
+          </div>
+          <div class="stock-actions">
+            <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
+            ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
+          </div>
+        </div>
+      `).join('');
     }
 
-    // 🍾 ABRIR PERFUME SELLADO (DESDE BOTÓN AZUL)
+    // 🍾 ABRIR PERFUME SELLADO
     async function abrirPerfumeSellado(idSellado) {
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
@@ -311,12 +352,11 @@
       cargarTodo();
     }
 
-    // ➕ SUMAR STOCK (DESDE BOTÓN VERDE)
+    // ➕ SUMAR STOCK
     async function sumarStock(id, stockActual) {
       const producto = listaProductos.find(p => p.id === id);
       if (!producto) return;
 
-      // Si es un Perfume para Decants, consultamos si se debe descontar de la botella sellada
       if (producto.tipo === 'Perfume para Decant') {
         const perfumeSellado = listaProductos.find(p => p.tipo === 'Perfume Sellado' && p.nombre.toLowerCase() === producto.nombre.toLowerCase());
 
@@ -330,11 +370,9 @@
             return alert(`¡No hay suficiente stock sellado! Solo tienes ${perfumeSellado.stock} unidades de "${perfumeSellado.nombre}".`);
           }
 
-          // 1. Descontar de perfumes sellados
           const { error: errSellado } = await client.from('productos').update({ stock: perfumeSellado.stock - cant }).eq('id', perfumeSellado.id);
           if (errSellado) return alert('Error al descontar stock sellado: ' + errSellado.message);
 
-          // 2. Sumar al perfume abierto
           const { error: errAbierto } = await client.from('productos').update({ stock: stockActual + cant }).eq('id', id);
           if (errAbierto) return alert('Error al sumar stock para decants: ' + errAbierto.message);
 
@@ -344,7 +382,6 @@
         }
       }
 
-      // Reposición estándar (para Perfumes Sellados o Envases Vacíos)
       const cantidad = prompt('¿Cuántas unidades deseas sumar al stock existente?');
       if (!cantidad || isNaN(cantidad) || parseInt(cantidad) <= 0) return;
 
