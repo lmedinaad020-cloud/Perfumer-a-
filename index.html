@@ -44,6 +44,7 @@
     button:hover { filter: brightness(1.08); transform: translateY(-1px); }
     button.btn-sec { background: transparent; border-color: rgba(246,240,231,.3); color: var(--muted); }
     button.btn-add { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #5e986c, #3d7452); border-color: #8fc49a; font-size: .75rem; }
+    button.btn-empty { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
     .price { color: var(--gold-light); font-weight: 700; }
@@ -52,9 +53,10 @@
     .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; }
     .nav-tabs button:hover { border-color: var(--gold); }
     .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.28); border-radius: 9px; border: 1px solid rgba(246,240,231,.09); }
+    .stock-actions { display: flex; gap: 6px; flex-direction: column; align-items: flex-end; }
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
-    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } }
+    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } }
   </style>
 </head>
 <body>
@@ -135,7 +137,7 @@
 
       <!-- TAB STOCK -->
       <div id="tab-stock" class="card hidden">
-        <h3>➕ Crear nuevo producto / envase</h3>
+        <h3>➕ Crear o Abrir Producto / Envase</h3>
         <form id="formStock">
           <div class="form-group">
             <label>Tipo de registro</label>
@@ -163,14 +165,14 @@
               <input type="number" step="0.01" id="stkPrecio" value="0.00">
             </div>
             <div class="form-group">
-              <label>Cantidad inicial</label>
-              <input type="number" id="stkCantidad" required>
+              <label>Cantidad a registrar / abrir</label>
+              <input type="number" id="stkCantidad" value="1" required>
             </div>
           </div>
-          <button type="submit">Guardar nuevo en inventario</button>
+          <button type="submit">Guardar / Abrir en inventario</button>
         </form>
         <h3 style="margin-top:28px;">📦 Stock actual y reposición</h3>
-        <p style="font-size:.78rem;">Usa el botón verde para sumar unidades al stock existente.</p>
+        <p style="font-size:.78rem;">Usa los botones para gestionar la cantidad o marcar frascos agotados.</p>
         <div id="listaStock">Cargando...</div>
       </div>
 
@@ -187,7 +189,7 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 🔒 CORREOS AUTORIZADOS PARA VER PRECIO BASE (ADMINISTRADORES)
+    // 🔒 CORREOS AUTORIZADOS PARA VER PRECIO BASE
     const ADMIN_EMAILS = [
       'diego@alpha.com',
       'luis@alpha.com',
@@ -250,20 +252,24 @@
         contenedor.innerHTML = '<p>Sin productos registrados.</p>';
         return;
       }
-      contenedor.innerHTML = listaProductos.map(p => `
+      contenedor.innerHTML = listaProductos.map(p => {
+        const esAgotable = p.tipo === 'Perfume para Decant' || p.tipo === 'Decant Vacío';
+        return `
         <div class="stock-item">
           <div>
             <span class="badge">${p.tipo} ${p.tamano ? `(${p.tamano})` : ''}</span>
             <h4 style="margin:7px 0 3px;">${p.nombre}</h4>
             
-            <!-- PRECIO BASE: Solo visible si el correo pertenece a la lista ADMIN_EMAILS -->
             ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
             
-            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong></p>
+            <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
           </div>
-          <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
+          <div class="stock-actions">
+            <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
+            ${esAgotable && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre}')" class="btn-empty">🚫 Marcar vacío</button>` : ''}
+          </div>
         </div>
-      `).join('');
+      `}).join('');
     }
 
     async function sumarStock(id, stockActual) {
@@ -280,43 +286,96 @@
       }
     }
 
+    // 🚫 MARCAR PERFUME O ENVASE COMO VACÍO (STOCK = 0)
+    async function marcarComoVacio(id, nombre) {
+      const confirmar = confirm(`¿Estás seguro de marcar "${nombre}" como VACÍO / AGOTADO? El stock pasará a 0.`);
+      if (!confirmar) return;
+
+      const { error } = await client.from('productos').update({ stock: 0 }).eq('id', id);
+
+      if (error) alert('Error al actualizar: ' + error.message);
+      else {
+        alert(`"${nombre}" se ha marcado como vacío.`);
+        cargarTodo();
+      }
+    }
+
     function actualizarOpcionesVenta() {
       const vtaTipoVal = document.getElementById('vtaTipo').value;
       const isDecant = vtaTipoVal === 'Decant';
       document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
       
       const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
-      const filtrados = listaProductos.filter(p => p.tipo === tipo);
+      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0);
       
       const selectPerfume = document.getElementById('vtaPerfume');
       if (filtrados.length === 0) {
-        selectPerfume.innerHTML = `<option value="">-- Sin productos de este tipo --</option>`;
+        selectPerfume.innerHTML = `<option value="">-- Sin productos activos disponibles --</option>`;
       } else {
         selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
       }
     }
 
+    // ➕ CREAR / ABRIR PRODUCTO Y DESCONTAR DEL STOCK SELLADO
     document.getElementById('formStock').addEventListener('submit', async (e) => {
       e.preventDefault();
       const tipo = document.getElementById('stkTipo').value;
+      const nombreInput = document.getElementById('stkNombre').value.trim();
+      const cantidadReg = parseInt(document.getElementById('stkCantidad').value) || 1;
+      const precioInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
+
+      if (tipo === 'Perfume para Decant') {
+        // Buscar si existe el perfume sellado
+        const perfumeSellado = listaProductos.find(p => p.tipo === 'Perfume Sellado' && p.nombre.toLowerCase() === nombreInput.toLowerCase());
+
+        if (perfumeSellado) {
+          if (perfumeSellado.stock < cantidadReg) {
+            return alert(`¡No hay suficiente stock de "${perfumeSellado.nombre}" sellado! Stock disponible: ${perfumeSellado.stock}`);
+          }
+          
+          const confirmar = confirm(`Se descontará ${cantidadReg} unidad(es) de "${perfumeSellado.nombre}" del stock de Perfumes Sellados y se abrirá para Decants. ¿Continuar?`);
+          if (!confirmar) return;
+
+          // Descontar 1 del perfume sellado
+          await client.from('productos').update({ stock: perfumeSellado.stock - cantidadReg }).eq('id', perfumeSellado.id);
+        } else {
+          const confirmarSinSellado = confirm(`No se encontró un "Perfume Sellado" con el nombre exacto "${nombreInput}". ¿Deseas registrarlo directamente como abierto?`);
+          if (!confirmarSinSellado) return;
+        }
+
+        // Verificar si ya existe en Perfume para Decant para solo sumar stock
+        const perfumeAbiertoExistente = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === nombreInput.toLowerCase());
+
+        if (perfumeAbiertoExistente) {
+          const { error } = await client.from('productos').update({ stock: perfumeAbiertoExistente.stock + cantidadReg }).eq('id', perfumeAbiertoExistente.id);
+          if (error) return alert('Error al actualizar stock abierto: ' + error.message);
+          alert(`¡Se abrió el perfume y se actualizó el stock para decants!`);
+          document.getElementById('formStock').reset();
+          cargarTodo();
+          return;
+        }
+      }
+
+      // Registro estándar
       const nuevo = {
-        nombre: document.getElementById('stkNombre').value,
+        nombre: nombreInput,
         tipo: tipo,
         tamano: tipo === 'Decant Vacío' ? document.getElementById('stkTamanoVacios').value : null,
-        precio: parseFloat(document.getElementById('stkPrecio').value) || 0,
-        stock: parseInt(document.getElementById('stkCantidad').value)
+        precio: precioInput,
+        stock: cantidadReg
       };
 
       const { error } = await client.from('productos').insert([nuevo]);
       if (error) alert('Error: ' + error.message);
       else {
-        alert('Guardado correctamente');
+        alert('Registrado correctamente');
         document.getElementById('formStock').reset();
         toggleCamposStock();
         cargarTodo();
       }
     });
 
+    // 🛒 REGISTRAR VENTA
     document.getElementById('formVenta').addEventListener('submit', async (e) => {
       e.preventDefault();
       const tipoVenta = document.getElementById('vtaTipo').value;
@@ -331,10 +390,13 @@
 
       if (tipoVenta === 'Perfume Sellado') {
         if (perfumeObj.stock < 1) return alert('¡No hay stock disponible de este perfume sellado!');
+        
         await client.from('productos').update({ stock: perfumeObj.stock - 1 }).eq('id', perfumeObj.id);
       } else {
+        // En ventas de Decants: Descontar 1 unidad del envase vacío
         const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
-        if (!vacioObj || vacioObj.stock < 1) return alert(`¡No hay stock de frascos vacíos de ${tamanoDecant}!`);
+        if (!vacioObj || vacioObj.stock < 1) return alert(`¡No hay stock disponible de frascos vacíos de ${tamanoDecant}!`);
+
         await client.from('productos').update({ stock: vacioObj.stock - 1 }).eq('id', vacioObj.id);
       }
 
