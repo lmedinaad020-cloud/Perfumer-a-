@@ -73,6 +73,10 @@
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
     .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
 
+    /* TARJETA DE VISTA PREVIA EN LA VENTA */
+    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 9px; margin-bottom: 14px; }
+    .preview-card img { width: 52px; height: 52px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
+
     /* ESTILOS DEL CARRITO DE COMPRAS */
     .cart-box { background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; margin-top: 18px; }
     .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px rgba(246,240,231,.1) solid; font-size: 0.82rem; }
@@ -111,7 +115,7 @@
 
       <!-- TAB VENTA MULTI-PRODUCTO -->
       <div id="tab-venta" class="card">
-        <h3>🛒 Registrar Nueva Venta Multi-Producto</h3>
+        <h3>🛒 Registrar Nueva Venta</h3>
         
         <!-- AGREGADOR DE PRODUCTOS AL CARRITO -->
         <div style="background: rgba(2,19,38,.4); padding:14px; border-radius:10px; border:1px solid rgba(246,240,231,.1);">
@@ -136,7 +140,16 @@
 
           <div class="form-group">
             <label>Seleccionar perfume disponible</label>
-            <select id="itemPerfume"></select>
+            <select id="itemPerfume" onchange="mostrarPreviewPerfumeVenta()"></select>
+          </div>
+
+          <!-- VISTA PREVIA DEL PERFUME SELECCIONADO -->
+          <div id="previewPerfumeVenta" class="preview-card hidden">
+            <img id="prevImg" src="" alt="Perfume" onerror="this.src='https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg'">
+            <div>
+              <h4 id="prevNombre" style="margin:0 0 3px; font-size:0.88rem; color:var(--ivory);">--</h4>
+              <p id="prevStock" style="margin:0; font-size:0.75rem; color:var(--gold-light);">Stock disponible: --</p>
+            </div>
           </div>
 
           <div class="grid-2">
@@ -479,7 +492,7 @@
       }
     }
 
-    // LÓGICA DE SELECCIÓN Y CARRITO DE VENTAS
+    // SELECCIÓN, VISTA PREVIA Y BÚSQUEDA EN VENTAS
     function actualizarOpcionesVenta() {
       filtrarPerfumesVenta();
     }
@@ -500,6 +513,29 @@
       } else {
         selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} (Stock: ${p.stock})</option>`).join('');
       }
+
+      mostrarPreviewPerfumeVenta();
+    }
+
+    // MUESTRA LA VISTA PREVIA DE LA IMAGEN DEL PERFUME SELECCIONADO
+    function mostrarPreviewPerfumeVenta() {
+      const perfumeId = document.getElementById('itemPerfume').value;
+      const cardPreview = document.getElementById('previewPerfumeVenta');
+
+      if (!perfumeId) {
+        cardPreview.classList.add('hidden');
+        return;
+      }
+
+      const perfume = listaProductos.find(p => p.id == perfumeId);
+      if (perfume) {
+        document.getElementById('prevNombre').innerText = perfume.nombre;
+        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades`;
+        document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
+        cardPreview.classList.remove('hidden');
+      } else {
+        cardPreview.classList.add('hidden');
+      }
     }
 
     // AGREGAR ÍTEM AL CARRITO
@@ -516,7 +552,6 @@
       const perfumeObj = listaProductos.find(p => p.id == perfumeId);
       if (!perfumeObj) return alert('Producto no encontrado.');
 
-      // Validar Stock
       if (tipoVenta === 'Perfume Sellado' && perfumeObj.stock < cantidad) {
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
@@ -535,7 +570,8 @@
         tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
         cantidad: cantidad,
         precio_unitario: precioUnitario,
-        subtotal: cantidad * precioUnitario
+        subtotal: cantidad * precioUnitario,
+        imagen_url: perfumeObj.imagen_url
       };
 
       carritoVenta.push(item);
@@ -562,9 +598,12 @@
         total += item.subtotal;
         return `
           <div class="cart-item">
-            <div>
-              <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge">${item.tipo} - ${item.tamano}</span><br>
-              <span style="color:var(--muted); font-size:0.75rem;">Precio unitario: S/ ${item.precio_unitario.toFixed(2)}</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${item.imagen_url || IMG_DEFAULT}" style="width:36px; height:36px; object-fit:cover; border-radius:5px; border:1px solid var(--border);" onerror="this.src='${IMG_DEFAULT}'">
+              <div>
+                <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge">${item.tipo} - ${item.tamano}</span><br>
+                <span style="color:var(--muted); font-size:0.75rem;">Precio unitario: S/ ${item.precio_unitario.toFixed(2)}</span>
+              </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
               <strong style="color:var(--gold-light);">S/ ${item.subtotal.toFixed(2)}</strong>
@@ -614,7 +653,7 @@
       const metodoPago = document.getElementById('vtaMetodoPago').value;
       const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
 
-      // 1. Descontar Inventario de cada ítem del carrito
+      // Descontar inventarios
       for (const item of carritoVenta) {
         if (item.tipo === 'Perfume Sellado') {
           const perf = listaProductos.find(p => p.id === item.producto_id);
@@ -622,7 +661,6 @@
             await client.from('productos').update({ stock: perf.stock - item.cantidad }).eq('id', perf.id);
           }
         } else {
-          // Es Decant: Descontar envase vacío correspondiente
           const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
           if (vacioObj) {
             await client.from('productos').update({ stock: vacioObj.stock - item.cantidad }).eq('id', vacioObj.id);
@@ -630,7 +668,6 @@
         }
       }
 
-      // 2. Formatear resumen de productos para la base de datos
       const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
 
       const venta = {
