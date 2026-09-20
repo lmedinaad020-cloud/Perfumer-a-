@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ALPHA Perfumes y Decants</title>
+  
+  <!-- FAVICON CON EL MISMO LOGO DE LA PÁGINA -->
+  <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
+  <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -54,7 +59,6 @@
     .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; }
     .nav-tabs button:hover { border-color: var(--gold); }
     
-    /* ITEMS DE STOCK MEJORADOS CON IMAGEN Y TARJETA */
     .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.45); border-radius: 11px; border: 1px solid rgba(246,240,231,.12); transition: border-color 0.2s; }
     .stock-item:hover { border-color: var(--gold); }
     .stock-info-wrapper { display: flex; align-items: center; gap: 14px; }
@@ -64,10 +68,13 @@
     .section-title { margin-top: 25px; margin-bottom: 10px; font-size: 1rem; color: var(--gold-light); border-bottom: 1px solid var(--border); padding-bottom: 5px; font-family: Georgia, serif; }
     .empty-msg { font-size: 0.8rem; color: var(--muted); font-style: italic; margin: 8px 0; }
     
-    /* BARRA DE BÚSQUEDA */
-    .search-box { position: relative; margin: 18px 0 10px; }
+    .search-box { position: relative; margin: 8px 0 10px; }
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
     .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
+
+    /* TARJETA DE VISTA PREVIA EN VENTA */
+    .preview-card { display: flex; align-items: center; gap: 14px; padding: 12px; background: rgba(2,19,38,.6); border: 1px dashed var(--gold); border-radius: 9px; margin-top: 10px; }
+    .preview-card img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
 
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
@@ -110,11 +117,30 @@
               <option value="Decant">Decant (Fraccionado)</option>
             </select>
           </div>
+
+          <!-- BUSCADOR DENTRO DE VENTAS -->
+          <div class="form-group">
+            <label>Buscar perfume por nombre</label>
+            <div class="search-box">
+              <input type="text" id="vtaBuscador" placeholder="Escribe el nombre del perfume..." oninput="filtrarPerfumesVenta()">
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Seleccionar perfume</label>
-            <select id="vtaPerfume" required></select>
+            <select id="vtaPerfume" required onchange="mostrarPreviewPerfumeVenta()"></select>
           </div>
-          <div id="grpTamano" class="form-group hidden">
+
+          <!-- VISTA PREVIA DEL PERFUME EN VENTA -->
+          <div id="previewPerfumeVenta" class="preview-card hidden">
+            <img id="prevImg" src="" alt="Perfume" onerror="this.src='https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg'">
+            <div>
+              <h4 id="prevNombre" style="margin:0 0 4px; font-size:0.9rem;">--</h4>
+              <p id="prevStock" style="margin:0; font-size:0.75rem; color:var(--gold-light);">Stock disponible: --</p>
+            </div>
+          </div>
+
+          <div id="grpTamano" class="form-group hidden" style="margin-top:14px;">
             <label>Tamaño de decant vendido</label>
             <select id="vtaTamano">
               <option value="3ml">3ml</option>
@@ -122,7 +148,7 @@
               <option value="10ml">10ml</option>
             </select>
           </div>
-          <div class="grid-2">
+          <div class="grid-2" style="margin-top:14px;">
             <div class="form-group">
               <label>Precio cobrado (S/)</label>
               <input type="number" step="0.01" id="vtaMonto" placeholder="Ej: 25.00" required>
@@ -193,7 +219,7 @@
 
         <h3 style="margin-top:28px;">📦 Control de Inventario Categorizado</h3>
         
-        <!-- BARRA DE BÚSQUEDA -->
+        <!-- BARRA DE BÚSQUEDA INVENTARIO -->
         <div class="search-box">
           <input type="text" id="inputBusqueda" placeholder="Buscar perfume por nombre..." oninput="filtrarInventario()">
         </div>
@@ -285,7 +311,6 @@
       renderizarStock();
     }
 
-    // RENDERIZADO CON BÚSQUEDA E IMÁGENES
     function renderizarStock() {
       const query = document.getElementById('inputBusqueda').value.toLowerCase().trim();
 
@@ -356,7 +381,7 @@
       `).join('');
     }
 
-    // 🍾 ABRIR PERFUME SELLADO (CON HERENCIA DE IMAGEN)
+    // 🍾 ABRIR PERFUME SELLADO
     async function abrirPerfumeSellado(idSellado) {
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
@@ -452,23 +477,53 @@
       }
     }
 
+    // 🔍 BUSCADOR Y SELECCIÓN EN TAB DE VENTA
     function actualizarOpcionesVenta() {
+      filtrarPerfumesVenta();
+    }
+
+    function filtrarPerfumesVenta() {
       const vtaTipoVal = document.getElementById('vtaTipo').value;
+      const query = document.getElementById('vtaBuscador').value.toLowerCase().trim();
       const isDecant = vtaTipoVal === 'Decant';
+      
       document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
       
       const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
-      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0);
+      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query));
       
       const selectPerfume = document.getElementById('vtaPerfume');
       if (filtrados.length === 0) {
-        selectPerfume.innerHTML = `<option value="">-- Sin productos activos disponibles --</option>`;
+        selectPerfume.innerHTML = `<option value="">-- Sin resultados disponibles --</option>`;
       } else {
         selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
       }
+
+      mostrarPreviewPerfumeVenta();
     }
 
-    // CREACIÓN NUEVO PRODUCTO CON URL DE IMAGEN
+    // MOSTRAR IMAGEN Y STOCK AL SELECCIONAR UN PERFUME PARA VENDER
+    function mostrarPreviewPerfumeVenta() {
+      const perfumeId = document.getElementById('vtaPerfume').value;
+      const cardPreview = document.getElementById('previewPerfumeVenta');
+
+      if (!perfumeId) {
+        cardPreview.classList.add('hidden');
+        return;
+      }
+
+      const perfume = listaProductos.find(p => p.id == perfumeId);
+      if (perfume) {
+        document.getElementById('prevNombre').innerText = perfume.nombre;
+        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades`;
+        document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
+        cardPreview.classList.remove('hidden');
+      } else {
+        cardPreview.classList.add('hidden');
+      }
+    }
+
+    // CREACIÓN NUEVO PRODUCTO
     document.getElementById('formStock').addEventListener('submit', async (e) => {
       e.preventDefault();
       const tipo = document.getElementById('stkTipo').value;
@@ -535,6 +590,7 @@
       else {
         alert('¡Venta realizada con éxito!');
         document.getElementById('formVenta').reset();
+        document.getElementById('vtaBuscador').value = '';
         actualizarOpcionesVenta();
         cargarTodo();
       }
