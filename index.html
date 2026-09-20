@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ALPHA Perfumes y Decants</title>
   
-  <!-- FAVICON CON EL MISMO LOGO DE LA PÁGINA -->
   <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
@@ -51,6 +50,8 @@
     button.btn-add { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #5e986c, #3d7452); border-color: #8fc49a; font-size: .75rem; }
     button.btn-open { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #60a5fa; font-size: .75rem; color: #fff; }
     button.btn-empty { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
+    button.btn-del { width: auto; margin: 0; padding: 4px 8px; background: #b85c5c; border: none; font-size: .7rem; border-radius: 4px; color: #fff; }
+    
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
     .price { color: var(--gold-light); font-weight: 700; }
@@ -72,9 +73,11 @@
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
     .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
 
-    /* TARJETA DE VISTA PREVIA EN VENTA */
-    .preview-card { display: flex; align-items: center; gap: 14px; padding: 12px; background: rgba(2,19,38,.6); border: 1px dashed var(--gold); border-radius: 9px; margin-top: 10px; }
-    .preview-card img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+    /* ESTILOS DEL CARRITO DE COMPRAS */
+    .cart-box { background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; margin-top: 18px; }
+    .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px rgba(246,240,231,.1) solid; font-size: 0.82rem; }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
@@ -106,53 +109,69 @@
         <button onclick="mostrarTab('historial')">📊 Historial</button>
       </nav>
 
-      <!-- TAB VENTA -->
+      <!-- TAB VENTA MULTI-PRODUCTO -->
       <div id="tab-venta" class="card">
-        <h3>🛒 Nueva venta</h3>
-        <form id="formVenta">
-          <div class="form-group">
-            <label>Tipo de venta</label>
-            <select id="vtaTipo" onchange="actualizarOpcionesVenta()">
-              <option value="Perfume Sellado">Perfume Sellado</option>
-              <option value="Decant">Decant (Fraccionado)</option>
-            </select>
-          </div>
-
-          <!-- BUSCADOR DENTRO DE VENTAS -->
-          <div class="form-group">
-            <label>Buscar perfume por nombre</label>
-            <div class="search-box">
-              <input type="text" id="vtaBuscador" placeholder="Escribe el nombre del perfume..." oninput="filtrarPerfumesVenta()">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Seleccionar perfume</label>
-            <select id="vtaPerfume" required onchange="mostrarPreviewPerfumeVenta()"></select>
-          </div>
-
-          <!-- VISTA PREVIA DEL PERFUME EN VENTA -->
-          <div id="previewPerfumeVenta" class="preview-card hidden">
-            <img id="prevImg" src="" alt="Perfume" onerror="this.src='https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg'">
-            <div>
-              <h4 id="prevNombre" style="margin:0 0 4px; font-size:0.9rem;">--</h4>
-              <p id="prevStock" style="margin:0; font-size:0.75rem; color:var(--gold-light);">Stock disponible: --</p>
-            </div>
-          </div>
-
-          <div id="grpTamano" class="form-group hidden" style="margin-top:14px;">
-            <label>Tamaño de decant vendido</label>
-            <select id="vtaTamano">
-              <option value="3ml">3ml</option>
-              <option value="5ml">5ml</option>
-              <option value="10ml">10ml</option>
-            </select>
-          </div>
-          <div class="grid-2" style="margin-top:14px;">
+        <h3>🛒 Registrar Nueva Venta Multi-Producto</h3>
+        
+        <!-- AGREGADOR DE PRODUCTOS AL CARRITO -->
+        <div style="background: rgba(2,19,38,.4); padding:14px; border-radius:10px; border:1px solid rgba(246,240,231,.1);">
+          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">1. Agregar producto a la orden</h4>
+          
+          <div class="grid-2">
             <div class="form-group">
-              <label>Precio cobrado (S/)</label>
-              <input type="number" step="0.01" id="vtaMonto" placeholder="Ej: 25.00" required>
+              <label>Tipo de ítem</label>
+              <select id="itemTipo" onchange="actualizarOpcionesVenta()">
+                <option value="Perfume Sellado">Perfume Sellado</option>
+                <option value="Decant">Decant (Fraccionado)</option>
+              </select>
             </div>
+
+            <div class="form-group">
+              <label>Buscar perfume</label>
+              <div class="search-box" style="margin:0;">
+                <input type="text" id="itemBuscador" placeholder="Escribe el nombre..." oninput="filtrarPerfumesVenta()">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Seleccionar perfume disponible</label>
+            <select id="itemPerfume"></select>
+          </div>
+
+          <div class="grid-2">
+            <div id="grpTamano" class="form-group hidden">
+              <label>Tamaño de decant</label>
+              <select id="itemTamano">
+                <option value="3ml">3ml</option>
+                <option value="5ml">5ml</option>
+                <option value="10ml">10ml</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input type="number" id="itemCantidad" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label>Precio Cobrado por Unidad (S/)</label>
+              <input type="number" step="0.01" id="itemPrecio" placeholder="Ej: 25.00">
+            </div>
+          </div>
+
+          <button type="button" onclick="agregarAlCarrito()" class="btn-add" style="width:100%; margin-top:6px; padding:10px;">➕ Agregar este ítem a la venta</button>
+        </div>
+
+        <!-- LISTADO DE ITEMS EN EL CARRITO -->
+        <div class="cart-box">
+          <h4 style="margin:0 0 10px; color:var(--ivory); border-bottom:1px solid var(--border); padding-bottom:6px;">🛍️ Detalle de la Venta Actual</h4>
+          <div id="listaCarrito"><p class="empty-msg">El carrito está vacío. Agrega productos arriba.</p></div>
+          <div class="cart-total" id="txtTotalVenta">Total a cobrar: S/ 0.00</div>
+        </div>
+
+        <!-- FORMULARIO DE CONFIRMACIÓN Y PAGO -->
+        <form id="formVenta" style="margin-top:18px;">
+          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">2. Datos del pago y envío</h4>
+          <div class="grid-2">
             <div class="form-group">
               <label>Método de pago</label>
               <select id="vtaMetodoPago">
@@ -161,18 +180,19 @@
                 <option value="Tarjeta">Tarjeta</option>
               </select>
             </div>
+            <div class="form-group">
+              <label>Canal de venta</label>
+              <select id="vtaCanal">
+                <option value="Tienda Local">Tienda Local</option>
+                <option value="Alpha Móvil">Alpha Móvil</option>
+                <option value="Instagram">Instagram</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Delivery Presencial">Delivery Presencial</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Canal de venta</label>
-            <select id="vtaCanal">
-              <option value="Tienda Local">Tienda Local</option>
-              <option value="Alpha Móvil">Alpha Móvil</option>
-              <option value="Instagram">Instagram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Delivery Presencial">Delivery Presencial</option>
-            </select>
-          </div>
-          <button type="submit">Procesar venta y descontar stock</button>
+
+          <button type="submit" style="margin-top:12px; font-size:1rem; padding:14px;">✅ Procesar Venta Completa</button>
         </form>
       </div>
 
@@ -219,20 +239,16 @@
 
         <h3 style="margin-top:28px;">📦 Control de Inventario Categorizado</h3>
         
-        <!-- BARRA DE BÚSQUEDA INVENTARIO -->
         <div class="search-box">
           <input type="text" id="inputBusqueda" placeholder="Buscar perfume por nombre..." oninput="filtrarInventario()">
         </div>
 
-        <!-- SECCIÓN 1: PERFUMES SELLADOS -->
         <div class="section-title">🧴 Perfumes Sellados</div>
         <div id="listaSellados">Cargando...</div>
 
-        <!-- SECCIÓN 2: PERFUMES ABIERTOS PARA DECANTS -->
         <div class="section-title">🧪 Perfumes Abiertos (para Decants)</div>
         <div id="listaAbiertos">Cargando...</div>
 
-        <!-- SECCIÓN 3: ENVASE DECANT VACÍOS -->
         <div class="section-title">📦 Envases Decants Vacíos</div>
         <div id="listaVacios">Cargando...</div>
       </div>
@@ -250,14 +266,11 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const ADMIN_EMAILS = [
-      'diego@alpha.com',
-      'luis@alpha.com',
-      'mau@alpha.com'
-    ];
+    const ADMIN_EMAILS = ['diego@alpha.com', 'luis@alpha.com', 'mau@alpha.com'];
 
     let usuarioActual = null;
     let listaProductos = [];
+    let carritoVenta = [];
     const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
 
     function esAdmin() {
@@ -320,7 +333,6 @@
       const abiertos = filtradosGlobal.filter(p => p.tipo === 'Perfume para Decant');
       const vacios = filtradosGlobal.filter(p => p.tipo === 'Decant Vacío');
 
-      // 1. Render Sellados
       const contSellados = document.getElementById('listaSellados');
       contSellados.innerHTML = !sellados.length ? '<p class="empty-msg">No hay perfumes sellados que coincidan.</p>' : sellados.map(p => `
         <div class="stock-item">
@@ -340,7 +352,6 @@
         </div>
       `).join('');
 
-      // 2. Render Abiertos
       const contAbiertos = document.getElementById('listaAbiertos');
       contAbiertos.innerHTML = !abiertos.length ? '<p class="empty-msg">No hay perfumes abiertos que coincidan.</p>' : abiertos.map(p => `
         <div class="stock-item">
@@ -360,7 +371,6 @@
         </div>
       `).join('');
 
-      // 3. Render Envases Vacíos
       const contVacios = document.getElementById('listaVacios');
       contVacios.innerHTML = !vacios.length ? '<p class="empty-msg">No hay envases vacíos que coincidan.</p>' : vacios.map(p => `
         <div class="stock-item">
@@ -391,7 +401,6 @@
 
       const nuevoStockSellado = perfumeSelladoObj.stock - 1;
       const { error: err1 } = await client.from('productos').update({ stock: nuevoStockSellado }).eq('id', idSellado);
-      
       if (err1) return alert('Error al actualizar stock sellado: ' + err1.message);
 
       const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === perfumeSelladoObj.nombre.toLowerCase());
@@ -426,10 +435,7 @@
           if (!cantidadStr || isNaN(cantidadStr) || parseInt(cantidadStr) <= 0) return;
 
           const cant = parseInt(cantidadStr);
-
-          if (perfumeSellado.stock < cant) {
-            return alert(`¡No hay suficiente stock sellado! Solo tienes ${perfumeSellado.stock} unidades de "${perfumeSellado.nombre}".`);
-          }
+          if (perfumeSellado.stock < cant) return alert(`¡No hay suficiente stock sellado! Solo tienes ${perfumeSellado.stock} unidades.`);
 
           const { error: errSellado } = await client.from('productos').update({ stock: perfumeSellado.stock - cant }).eq('id', perfumeSellado.id);
           if (errSellado) return alert('Error al descontar stock sellado: ' + errSellado.message);
@@ -437,7 +443,7 @@
           const { error: errAbierto } = await client.from('productos').update({ stock: stockActual + cant }).eq('id', id);
           if (errAbierto) return alert('Error al sumar stock para decants: ' + errAbierto.message);
 
-          alert(`¡Se abrieron ${cant} botella(s) de "${producto.nombre}"!\n- Sellados restantes: ${perfumeSellado.stock - cant}\n- Abiertos totales: ${stockActual + cant}`);
+          alert(`¡Se abrieron ${cant} botella(s) de "${producto.nombre}"!`);
           cargarTodo();
           return;
         }
@@ -468,59 +474,107 @@
 
       if (error) alert('Error al actualizar: ' + error.message);
       else {
-        if (nuevoStock === 0) {
-          alert(`Se descontó 1 unidad. "${nombre}" ha quedado TOTALMENTE AGOTADO (0 unidades).`);
-        } else {
-          alert(`Se descontó 1 unidad de "${nombre}". Unidades restantes: ${nuevoStock}.`);
-        }
+        alert(`Se descontó 1 unidad de "${nombre}". Quedan: ${nuevoStock}.`);
         cargarTodo();
       }
     }
 
-    // 🔍 BUSCADOR Y SELECCIÓN EN TAB DE VENTA
+    // LÓGICA DE SELECCIÓN Y CARRITO DE VENTAS
     function actualizarOpcionesVenta() {
       filtrarPerfumesVenta();
     }
 
     function filtrarPerfumesVenta() {
-      const vtaTipoVal = document.getElementById('vtaTipo').value;
-      const query = document.getElementById('vtaBuscador').value.toLowerCase().trim();
-      const isDecant = vtaTipoVal === 'Decant';
+      const itemTipoVal = document.getElementById('itemTipo').value;
+      const query = document.getElementById('itemBuscador').value.toLowerCase().trim();
+      const isDecant = itemTipoVal === 'Decant';
       
       document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
       
       const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
       const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query));
       
-      const selectPerfume = document.getElementById('vtaPerfume');
+      const selectPerfume = document.getElementById('itemPerfume');
       if (filtrados.length === 0) {
         selectPerfume.innerHTML = `<option value="">-- Sin resultados disponibles --</option>`;
       } else {
-        selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+        selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} (Stock: ${p.stock})</option>`).join('');
       }
-
-      mostrarPreviewPerfumeVenta();
     }
 
-    // MOSTRAR IMAGEN Y STOCK AL SELECCIONAR UN PERFUME PARA VENDER
-    function mostrarPreviewPerfumeVenta() {
-      const perfumeId = document.getElementById('vtaPerfume').value;
-      const cardPreview = document.getElementById('previewPerfumeVenta');
+    // AGREGAR ÍTEM AL CARRITO
+    function agregarAlCarrito() {
+      const perfumeId = document.getElementById('itemPerfume').value;
+      const tipoVenta = document.getElementById('itemTipo').value;
+      const tamanoDecant = document.getElementById('itemTamano').value;
+      const cantidad = parseInt(document.getElementById('itemCantidad').value) || 1;
+      const precioUnitario = parseFloat(document.getElementById('itemPrecio').value);
 
-      if (!perfumeId) {
-        cardPreview.classList.add('hidden');
+      if (!perfumeId) return alert('Selecciona un perfume válido.');
+      if (isNaN(precioUnitario) || precioUnitario <= 0) return alert('Ingresa un precio válido mayor a 0.');
+
+      const perfumeObj = listaProductos.find(p => p.id == perfumeId);
+      if (!perfumeObj) return alert('Producto no encontrado.');
+
+      // Validar Stock
+      if (tipoVenta === 'Perfume Sellado' && perfumeObj.stock < cantidad) {
+        return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
+      }
+
+      if (tipoVenta === 'Decant') {
+        const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
+        if (!vacioObj || vacioObj.stock < cantidad) {
+          return alert(`Stock insuficiente de envases vacíos de ${tamanoDecant}. Quedan: ${vacioObj ? vacioObj.stock : 0}`);
+        }
+      }
+
+      const item = {
+        producto_id: perfumeObj.id,
+        nombre: perfumeObj.nombre,
+        tipo: tipoVenta,
+        tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
+        cantidad: cantidad,
+        precio_unitario: precioUnitario,
+        subtotal: cantidad * precioUnitario
+      };
+
+      carritoVenta.push(item);
+      document.getElementById('itemPrecio').value = '';
+      document.getElementById('itemCantidad').value = '1';
+      renderizarCarrito();
+    }
+
+    function eliminarDelCarrito(index) {
+      carritoVenta.splice(index, 1);
+      renderizarCarrito();
+    }
+
+    function renderizarCarrito() {
+      const cont = document.getElementById('listaCarrito');
+      if (!carritoVenta.length) {
+        cont.innerHTML = '<p class="empty-msg">El carrito está vacío. Agrega productos arriba.</p>';
+        document.getElementById('txtTotalVenta').innerText = 'Total a cobrar: S/ 0.00';
         return;
       }
 
-      const perfume = listaProductos.find(p => p.id == perfumeId);
-      if (perfume) {
-        document.getElementById('prevNombre').innerText = perfume.nombre;
-        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades`;
-        document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
-        cardPreview.classList.remove('hidden');
-      } else {
-        cardPreview.classList.add('hidden');
-      }
+      let total = 0;
+      cont.innerHTML = carritoVenta.map((item, idx) => {
+        total += item.subtotal;
+        return `
+          <div class="cart-item">
+            <div>
+              <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge">${item.tipo} - ${item.tamano}</span><br>
+              <span style="color:var(--muted); font-size:0.75rem;">Precio unitario: S/ ${item.precio_unitario.toFixed(2)}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong style="color:var(--gold-light);">S/ ${item.subtotal.toFixed(2)}</strong>
+              <button type="button" onclick="eliminarDelCarrito(${idx})" class="btn-del">❌</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('txtTotalVenta').innerText = `Total a cobrar: S/ ${total.toFixed(2)}`;
     }
 
     // CREACIÓN NUEVO PRODUCTO
@@ -551,46 +605,49 @@
       }
     });
 
-    // 🛒 REGISTRAR VENTA
+    // 🛒 PROCESAR VENTA MULTI-PRODUCTO
     document.getElementById('formVenta').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const tipoVenta = document.getElementById('vtaTipo').value;
-      const perfumeId = document.getElementById('vtaPerfume').value;
-      const tamanoDecant = document.getElementById('vtaTamano').value;
-      const monto = parseFloat(document.getElementById('vtaMonto').value);
+      if (!carritoVenta.length) return alert('¡Agrega al menos un producto al carrito antes de procesar la venta!');
+
       const canal = document.getElementById('vtaCanal').value;
       const metodoPago = document.getElementById('vtaMetodoPago').value;
+      const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
 
-      const perfumeObj = listaProductos.find(p => p.id == perfumeId);
-      if (!perfumeObj) return alert('Selecciona un perfume válido.');
-
-      if (tipoVenta === 'Perfume Sellado') {
-        if (perfumeObj.stock < 1) return alert('¡No hay stock disponible de este perfume sellado!');
-        
-        await client.from('productos').update({ stock: perfumeObj.stock - 1 }).eq('id', perfumeObj.id);
-      } else {
-        const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
-        if (!vacioObj || vacioObj.stock < 1) return alert(`¡No hay stock disponible de frascos vacíos de ${tamanoDecant}!`);
-
-        await client.from('productos').update({ stock: vacioObj.stock - 1 }).eq('id', vacioObj.id);
+      // 1. Descontar Inventario de cada ítem del carrito
+      for (const item of carritoVenta) {
+        if (item.tipo === 'Perfume Sellado') {
+          const perf = listaProductos.find(p => p.id === item.producto_id);
+          if (perf) {
+            await client.from('productos').update({ stock: perf.stock - item.cantidad }).eq('id', perf.id);
+          }
+        } else {
+          // Es Decant: Descontar envase vacío correspondiente
+          const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+          if (vacioObj) {
+            await client.from('productos').update({ stock: vacioObj.stock - item.cantidad }).eq('id', vacioObj.id);
+          }
+        }
       }
 
+      // 2. Formatear resumen de productos para la base de datos
+      const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
+
       const venta = {
-        producto_id: perfumeObj.id,
-        producto_nombre: perfumeObj.nombre,
-        tipo_venta: tipoVenta,
-        tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
-        monto_total: monto,
+        producto_nombre: resumenNombres,
+        monto_total: totalMonto,
         vendedor_email: usuarioActual.email,
-        ubicacion_venta: `${canal} (${metodoPago})`
+        ubicacion_venta: `${canal} (${metodoPago})`,
+        detalles: carritoVenta
       };
 
       const { error } = await client.from('ventas').insert([venta]);
       if (error) alert('Error al registrar la venta: ' + error.message);
       else {
         alert('¡Venta realizada con éxito!');
-        document.getElementById('formVenta').reset();
-        document.getElementById('vtaBuscador').value = '';
+        carritoVenta = [];
+        renderizarCarrito();
+        document.getElementById('itemBuscador').value = '';
         actualizarOpcionesVenta();
         cargarTodo();
       }
@@ -607,8 +664,8 @@
         <div class="stock-item">
           <div>
             <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleString()}</p>
-            <h4 style="margin:5px 0;">${v.producto_nombre} <span class="badge">${v.tamano}</span></h4>
-            <p class="price" style="margin:0;font-size:.83rem;">Monto: S/ ${v.monto_total}</p>
+            <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
+            <p class="price" style="margin:0;font-size:.83rem;">Total: S/ ${v.monto_total.toFixed(2)}</p>
             <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
           </div>
         </div>
