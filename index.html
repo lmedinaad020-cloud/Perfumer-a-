@@ -173,7 +173,7 @@
           <button type="submit">Guardar nuevo en inventario</button>
         </form>
         <h3 style="margin-top:28px;">📦 Stock actual y reposición</h3>
-        <p style="font-size:.78rem;">Usa el botón azul para abrir un perfume sellado y pasarlo a Decants.</p>
+        <p style="font-size:.78rem;">Usa el botón azul para abrir un perfume sellado y el rojo para descontar 1 botella vacía.</p>
         <div id="listaStock">Cargando...</div>
       </div>
 
@@ -273,14 +273,14 @@
             <!-- Botón para abrir perfume sellado -->
             ${esSellado && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.precio})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
             
-            <!-- Botón para agotar -->
-            ${esAgotable && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')" class="btn-empty">🚫 Marcar vacío</button>` : ''}
+            <!-- Botón para descontar 1 unidad agotada -->
+            ${esAgotable && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
           </div>
         </div>
       `}).join('');
     }
 
-    // 🍾 FUNCIÓN PARA ABRIR UN PERFUME SELLADO Y DESCONTARLO
+    // 🍾 ABRIR PERFUME SELLADO
     async function abrirPerfumeSellado(idSellado, nombrePerfume, precioBase) {
       const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${nombrePerfume}"?\n\n- Se descontará 1 unidad del stock sellado.\n- Se creará/añadirá 1 unidad como "Perfume para Decant".`);
       if (!confirmar) return;
@@ -296,10 +296,8 @@
       const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === nombrePerfume.toLowerCase());
 
       if (perfumeAbiertoObj) {
-        // Si ya existe, le sumamos 1
         await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
       } else {
-        // Si no existe, creamos el registro como "Perfume para Decant"
         await client.from('productos').insert([{
           nombre: nombrePerfume,
           tipo: 'Perfume para Decant',
@@ -327,16 +325,23 @@
       }
     }
 
-    // 🚫 MARCAR COMO VACÍO
-    async function marcarComoVacio(id, nombre) {
-      const confirmar = confirm(`¿Estás seguro de marcar "${nombre}" como VACÍO / AGOTADO? El stock pasará a 0.`);
+    // 🚫 DESCONTAR 1 UNIDAD VACÍA (REDUCIR STOCK EN 1)
+    async function marcarComoVacio(id, nombre, stockActual) {
+      if (stockActual <= 0) return alert(`"${nombre}" ya no tiene unidades disponibles.`);
+
+      const confirmar = confirm(`¿Confirmas que se terminó 1 botella de "${nombre}"?\n\nStock actual: ${stockActual} ➔ Quedarán: ${stockActual - 1}`);
       if (!confirmar) return;
 
-      const { error } = await client.from('productos').update({ stock: 0 }).eq('id', id);
+      const nuevoStock = stockActual - 1;
+      const { error } = await client.from('productos').update({ stock: nuevoStock }).eq('id', id);
 
       if (error) alert('Error al actualizar: ' + error.message);
       else {
-        alert(`"${nombre}" se ha marcado como vacío.`);
+        if (nuevoStock === 0) {
+          alert(`Se descontó 1 unidad. "${nombre}" ha quedado TOTALMENTE AGOTADO (0 unidades).`);
+        } else {
+          alert(`Se descontó 1 unidad de "${nombre}". Unidades restantes: ${nuevoStock}.`);
+        }
         cargarTodo();
       }
     }
