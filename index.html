@@ -81,6 +81,11 @@
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
+    /* MODAL DE VISUALIZACIÓN DE COMPROBANTE */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+    .modal-content { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
+
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
     @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } }
@@ -274,6 +279,15 @@
         <div id="listaVentas">Cargando ventas...</div>
       </div>
     </section>
+
+    <!-- MODAL VISOR DE COMPROBANTE DE PAGO -->
+    <div id="modalComprobante" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h4 style="margin:0 0 12px; color:var(--gold-light);">📸 Comprobante de Pago</h4>
+        <img id="modalImgComprobante" src="" alt="Comprobante de pago">
+        <button onclick="cerrarModalComprobante()" style="margin-top:14px;">Cerrar</button>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -287,6 +301,7 @@
     let listaProductos = [];
     let carritoVenta = [];
     let comprobanteBase64 = null;
+    let listaVentasCache = [];
     const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
 
     function esAdmin() {
@@ -536,6 +551,7 @@
       }
     }
 
+    // COMPRESIÓN OPTIMIZADA DE FOTO COMPROBANTE
     function previsualizarComprobante(e) {
       const file = e.target.files[0];
       if (!file) {
@@ -546,9 +562,32 @@
 
       const reader = new FileReader();
       reader.onload = function(evt) {
-        comprobanteBase64 = evt.target.result;
-        document.getElementById('imgComprobantePreview').src = comprobanteBase64;
-        document.getElementById('previewComprobanteContainer').classList.remove('hidden');
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 800; // Ancho/alto máximo recomendado
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Calidad 70% compresión JPEG
+          comprobanteBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          document.getElementById('imgComprobantePreview').src = comprobanteBase64;
+          document.getElementById('previewComprobanteContainer').classList.remove('hidden');
+        };
+        img.src = evt.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -665,7 +704,6 @@
       const metodoPago = document.getElementById('vtaMetodoPago').value;
       const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
 
-      // Descontar inventarios
       for (const item of carritoVenta) {
         if (item.tipo === 'Perfume Sellado') {
           const perf = listaProductos.find(p => p.id === item.producto_id);
@@ -681,8 +719,6 @@
       }
 
       const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
-
-      // Determinar tipo de venta representativo para evitar error NOT NULL en Supabase
       const primerTipo = carritoVenta[0] ? carritoVenta[0].tipo : 'Venta Mixta';
 
       const venta = {
@@ -712,22 +748,37 @@
 
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
+      listaVentasCache = ventas || [];
       const contenedor = document.getElementById('listaVentas');
       if (!ventas || !ventas.length) {
         contenedor.innerHTML = '<p>No hay ventas registradas aún.</p>';
         return;
       }
-      contenedor.innerHTML = ventas.map(v => `
+      contenedor.innerHTML = ventas.map((v, idx) => `
         <div class="stock-item">
           <div>
             <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleString()}</p>
             <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
             <p class="price" style="margin:0;font-size:.83rem;">Total: S/ ${v.monto_total.toFixed(2)}</p>
             <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
-            ${v.comprobante_url ? `<div style="margin-top:6px;"><a href="${v.comprobante_url}" target="_blank" style="color:var(--gold-light); font-size:0.75rem; text-decoration:underline;">📸 Ver Captura/Comprobante de Pago</a></div>` : ''}
+            ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="margin-top:8px; padding:4px 10px; font-size:0.75rem;">📸 Ver Captura/Comprobante</button>` : ''}
           </div>
         </div>
       `).join('');
+    }
+
+    // FUNCIONES DEL MODAL COMPROBANTE
+    function abrirModalComprobante(idx) {
+      const venta = listaVentasCache[idx];
+      if (venta && venta.comprobante_url) {
+        document.getElementById('modalImgComprobante').src = venta.comprobante_url;
+        document.getElementById('modalComprobante').classList.remove('hidden');
+      }
+    }
+
+    function cerrarModalComprobante() {
+      document.getElementById('modalComprobante').classList.add('hidden');
+      document.getElementById('modalImgComprobante').src = '';
     }
   </script>
 </body>
