@@ -199,7 +199,6 @@
             </div>
           </div>
 
-          <!-- CAMPO Y PREVISUALIZACIÓN DE FOTO DEL COMPROBANTE -->
           <div class="form-group" style="margin-top:8px;">
             <label>📸 Foto del Comprobante / Pantalla de Yape (Opcional)</label>
             <input type="file" id="vtaFotoComprobante" accept="image/*" capture="environment" onchange="previsualizarComprobante(event)">
@@ -537,7 +536,6 @@
       }
     }
 
-    // PROCESAMIENTO Y PREVISUALIZACIÓN DE FOTO DEL COMPROBANTE DE YAPE
     function previsualizarComprobante(e) {
       const file = e.target.files[0];
       if (!file) {
@@ -667,6 +665,7 @@
       const metodoPago = document.getElementById('vtaMetodoPago').value;
       const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
 
+      // Descontar inventarios
       for (const item of carritoVenta) {
         if (item.tipo === 'Perfume Sellado') {
           const perf = listaProductos.find(p => p.id === item.producto_id);
@@ -683,8 +682,12 @@
 
       const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
 
+      // Determinar tipo de venta representativo para evitar error NOT NULL en Supabase
+      const primerTipo = carritoVenta[0] ? carritoVenta[0].tipo : 'Venta Mixta';
+
       const venta = {
         producto_nombre: resumenNombres,
+        tipo_venta: primerTipo,
         monto_total: totalMonto,
         vendedor_email: usuarioActual.email,
         ubicacion_venta: `${canal} (${metodoPago})`,
