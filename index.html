@@ -59,8 +59,8 @@
     .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
     .price { color: var(--gold-light); font-weight: 700; }
     .hidden { display: none !important; }
-    .nav-tabs { display: flex; gap: 9px; margin: 0 0 16px; }
-    .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; }
+    .nav-tabs { display: flex; gap: 9px; margin: 0 0 16px; flex-wrap: wrap; }
+    .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; min-width: 100px; }
     .nav-tabs button:hover { border-color: var(--gold); }
     
     .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.45); border-radius: 11px; border: 1px solid rgba(246,240,231,.12); transition: border-color 0.2s; }
@@ -83,6 +83,10 @@
     .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px rgba(246,240,231,.1) solid; font-size: 0.82rem; }
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
+
+    /* ESTILOS DEL MÓDULO DE ASISTENCIA */
+    .timer-card { text-align: center; background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .timer-display { font-size: 2.2rem; font-weight: bold; font-family: monospace; color: var(--gold-light); margin: 10px 0; }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
     .modal-content { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
@@ -116,6 +120,7 @@
         <button onclick="mostrarTab('venta')">🛒 Vender</button>
         <button onclick="mostrarTab('stock')">📦 Inventario</button>
         <button onclick="mostrarTab('historial')">📊 Historial</button>
+        <button onclick="mostrarTab('asistencia')">⏱️ Asistencia</button>
       </nav>
 
       <!-- TAB VENTA MULTI-PRODUCTO -->
@@ -283,6 +288,25 @@
         </div>
         <div id="listaVentas">Cargando ventas...</div>
       </div>
+
+      <!-- TAB ASISTENCIA DE TRABAJADORES -->
+      <div id="tab-asistencia" class="card hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <h3 style="margin:0;">⏱️ Control de Asistencia</h3>
+          <button id="btnExportarAsistencia" onclick="exportarAsistenciaExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Reporte Asistencia (.xlsx)</button>
+        </div>
+
+        <div class="timer-card">
+          <h4 style="margin:0; color:var(--ivory);">Registro de Jornada de Hoy</h4>
+          <p id="txtEstadoJornada" style="margin:6px 0 10px; font-size:0.85rem;">Cargando estado...</p>
+          <div id="timerDisplay" class="timer-display">00:00:00</div>
+          <button id="btnMarcarIngreso" onclick="marcarIngresoTrabajo()" style="background:linear-gradient(135deg, #28a745, #1e7e34); border-color:#28a745; font-size:1rem; padding:12px;">▶️ Inicio de Trabajo (Marcar Entrada)</button>
+          <button id="btnMarcarSalida" onclick="marcarSalidaTrabajo()" class="hidden" style="background:linear-gradient(135deg, #dc3545, #bd2130); border-color:#dc3545; font-size:1rem; padding:12px;">⏹️ Marcar Salida del Trabajo</button>
+        </div>
+
+        <h4 style="margin:20px 0 10px; color:var(--gold-light);">📋 Registros de Asistencia Recientes</h4>
+        <div id="listaAsistencia">Cargando historial de asistencia...</div>
+      </div>
     </section>
 
     <!-- MODAL VISOR DE COMPROBANTE DE PAGO -->
@@ -307,6 +331,10 @@
     let carritoVenta = [];
     let comprobanteBase64 = null;
     let listaVentasCache = [];
+    let listaAsistenciaCache = [];
+    let registroAsistenciaActivo = null;
+    let intervalTimer = null;
+
     const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
 
     function esAdmin() {
@@ -331,25 +359,31 @@
       document.getElementById('sec-app').classList.remove('hidden');
       document.getElementById('userLogged').innerText = `Usuario: ${usuarioActual.email} ${esAdmin() ? ' (ADMIN)' : ''}`;
       
-      // MOSTRAR O OCULTAR BOTÓN DE EXCEL SEGÚN ROL DE ADMIN
       const btnExcel = document.getElementById('btnExportarExcel');
+      const btnAsistenciaExcel = document.getElementById('btnExportarAsistencia');
       if (esAdmin()) {
         btnExcel.classList.remove('hidden');
+        btnAsistenciaExcel.classList.remove('hidden');
       } else {
         btnExcel.classList.add('hidden');
+        btnAsistenciaExcel.classList.add('hidden');
       }
 
       cargarTodo();
     }
 
     async function cerrarSesion() {
+      if (intervalTimer) clearInterval(intervalTimer);
       await client.auth.signOut();
       location.reload();
     }
 
     function mostrarTab(tab) {
-      ['venta', 'stock', 'historial'].forEach(t => document.getElementById(`tab-${t}`).classList.add('hidden'));
+      ['venta', 'stock', 'historial', 'asistencia'].forEach(t => document.getElementById(`tab-${t}`).classList.add('hidden'));
       document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      if (tab === 'asistencia') {
+        cargarEstadoAsistencia();
+      }
     }
 
     async function cargarTodo() {
@@ -358,6 +392,7 @@
       renderizarStock();
       actualizarOpcionesVenta();
       cargarHistorial();
+      cargarEstadoAsistencia();
     }
 
     function toggleCamposStock() {
@@ -794,18 +829,9 @@
 
     // EXPORTACIÓN A EXCEL PROTEGIDA
     function exportarExcel() {
-      // VALIDACIÓN DE SEGURIDAD INTERNA
-      if (!esAdmin()) {
-        return alert('Acceso denegado: Solo los administradores pueden descargar el archivo de ventas.');
-      }
-
-      if (!listaVentasCache || !listaVentasCache.length) {
-        return alert('No hay ventas registradas para exportar.');
-      }
-
-      if (typeof XLSX === 'undefined') {
-        return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
-      }
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el archivo de ventas.');
+      if (!listaVentasCache || !listaVentasCache.length) return alert('No hay ventas registradas para exportar.');
+      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
         ["ID", "Fecha y Hora", "Productos Vendidos", "Monto Total (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
@@ -824,7 +850,6 @@
       });
 
       const ws = XLSX.utils.aoa_to_sheet(datosExcel);
-
       const colWidths = datosExcel[0].map((col, colIdx) => {
         let maxLen = col.toString().length;
         datosExcel.forEach(row => {
@@ -840,6 +865,151 @@
 
       const fechaHoy = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${fechaHoy}.xlsx`);
+    }
+
+    // LÓGICA DE CONTROL DE ASISTENCIA Y CRONÓMETRO DE TRABAJO
+    async function cargarEstadoAsistencia() {
+      if (!usuarioActual) return;
+
+      const { data } = await client.from('asistencia')
+        .select('*')
+        .eq('vendedor_email', usuarioActual.email)
+        .is('fecha_salida', null)
+        .order('fecha_ingreso', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        registroAsistenciaActivo = data[0];
+        document.getElementById('txtEstadoJornada').innerText = `🟢 En jornada laboral desde: ${new Date(registroAsistenciaActivo.fecha_ingreso).toLocaleTimeString()}`;
+        document.getElementById('btnMarcarIngreso').classList.add('hidden');
+        document.getElementById('btnMarcarSalida').classList.remove('hidden');
+        iniciarCronometro(new Date(registroAsistenciaActivo.fecha_ingreso));
+      } else {
+        registroAsistenciaActivo = null;
+        if (intervalTimer) clearInterval(intervalTimer);
+        document.getElementById('txtEstadoJornada').innerText = '🔴 Fuera de turno de trabajo';
+        document.getElementById('timerDisplay').innerText = '00:00:00';
+        document.getElementById('btnMarcarIngreso').classList.remove('hidden');
+        document.getElementById('btnMarcarSalida').classList.add('hidden');
+      }
+
+      cargarHistorialAsistencia();
+    }
+
+    function iniciarCronometro(fechaIngreso) {
+      if (intervalTimer) clearInterval(intervalTimer);
+      
+      function actualizar() {
+        const ahora = new Date();
+        const diffMs = ahora - fechaIngreso;
+        const totalSegs = Math.floor(diffMs / 1000);
+        
+        const hrs = String(Math.floor(totalSegs / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((totalSegs % 3600) / 60)).padStart(2, '0');
+        const segs = String(totalSegs % 60).padStart(2, '0');
+        
+        document.getElementById('timerDisplay').innerText = `${hrs}:${mins}:${segs}`;
+      }
+
+      actualizar();
+      intervalTimer = setInterval(actualizar, 1000);
+    }
+
+    async function marcarIngresoTrabajo() {
+      const confirmar = confirm(`¿Confirmas que estás INICIANDO tu jornada laboral como ${usuarioActual.email}?`);
+      if (!confirmar) return;
+
+      const nuevoRegistro = {
+        vendedor_email: usuarioActual.email,
+        fecha_ingreso: new Date().toISOString()
+      };
+
+      const { error } = await client.from('asistencia').insert([nuevoRegistro]);
+      if (error) alert('Error al marcar ingreso: ' + error.message);
+      else {
+        alert('¡Jornada de trabajo iniciada con éxito!');
+        cargarEstadoAsistencia();
+      }
+    }
+
+    async function marcarSalidaTrabajo() {
+      if (!registroAsistenciaActivo) return;
+
+      const fechaIngreso = new Date(registroAsistenciaActivo.fecha_ingreso);
+      const fechaSalida = new Date();
+      const horasTrabajadas = ((fechaSalida - fechaIngreso) / (1000 * 60 * 60)).toFixed(2);
+
+      const confirmar = confirm(`¿Confirmas que deseas MARCAR TU SALIDA?\n\nTiempo total aproximado: ${horasTrabajadas} horas.`);
+      if (!confirmar) return;
+
+      const { error } = await client.from('asistencia').update({
+        fecha_salida: fechaSalida.toISOString(),
+        horas_trabajadas: parseFloat(horasTrabajadas)
+      }).eq('id', registroAsistenciaActivo.id);
+
+      if (error) alert('Error al marcar salida: ' + error.message);
+      else {
+        alert(`¡Salida registrada! Trabajaste un total de ${horasTrabajadas} hrs.`);
+        cargarEstadoAsistencia();
+      }
+    }
+
+    async function cargarHistorialAsistencia() {
+      let query = client.from('asistencia').select('*').order('fecha_ingreso', { ascending: false }).limit(20);
+      
+      if (!esAdmin()) {
+        query = query.eq('vendedor_email', usuarioActual.email);
+      }
+
+      const { data } = await query;
+      listaAsistenciaCache = data || [];
+      const contenedor = document.getElementById('listaAsistencia');
+
+      if (!listaAsistenciaCache.length) {
+        contenedor.innerHTML = '<p class="empty-msg">No hay registros de asistencia aún.</p>';
+        return;
+      }
+
+      contenedor.innerHTML = listaAsistenciaCache.map(a => `
+        <div class="stock-item">
+          <div>
+            <span class="badge">${a.vendedor_email}</span>
+            <p style="margin:5px 0 2px; font-size:0.8rem;">Entrada: <strong>${new Date(a.fecha_ingreso).toLocaleString()}</strong></p>
+            <p style="margin:0; font-size:0.8rem;">Salida: <strong>${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '<span style="color:var(--gold-light);">En Curso...</span>'}</strong></p>
+          </div>
+          <div style="text-align:right;">
+            <p class="price" style="margin:0; font-size:0.9rem;">${a.horas_trabajadas ? `${a.horas_trabajadas} hrs` : 'Trabajando'}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function exportarAsistenciaExcel() {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el reporte de asistencia.');
+      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay datos de asistencia para exportar.');
+
+      const datosExcel = [
+        ["ID", "Trabajador / Email", "Fecha/Hora Entrada", "Fecha/Hora Salida", "Horas Trabajadas"]
+      ];
+
+      listaAsistenciaCache.forEach(a => {
+        datosExcel.push([
+          a.id || '',
+          a.vendedor_email || '',
+          new Date(a.fecha_ingreso).toLocaleString(),
+          a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : 'EN CURSO',
+          a.horas_trabajadas ? parseFloat(a.horas_trabajadas) : 0
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(datosExcel);
+      ws['!cols'] = [{ wch: 8 }, { wch: 25 }, { wch: 22 }, { wch: 22 }, { wch: 18 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
+
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Reporte_Asistencia_ALPHA_${fechaHoy}.xlsx`);
     }
   </script>
 </body>
