@@ -84,7 +84,6 @@
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
-    /* ESTILOS DEL MÓDULO DE ASISTENCIA */
     .timer-card { text-align: center; background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
     .timer-display { font-size: 2.2rem; font-weight: bold; font-family: monospace; color: var(--gold-light); margin: 10px 0; }
 
@@ -225,46 +224,48 @@
 
       <!-- TAB STOCK -->
       <div id="tab-stock" class="card hidden">
-        <h3>➕ Crear Nuevo Producto / Envase</h3>
-        <form id="formStock">
-          <div class="form-group">
-            <label>Tipo de registro</label>
-            <select id="stkTipo" onchange="toggleCamposStock()">
-              <option value="Perfume Sellado">Perfume Sellado</option>
-              <option value="Perfume para Decant">Perfume Abierto (Para Decants)</option>
-              <option value="Decant Vacío">Envase Decant Vacío</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Nombre / descripción</label>
-            <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Atomizador" required>
-          </div>
-          <div class="form-group">
-            <label>URL de Imagen del Perfume (Opcional)</label>
-            <input type="url" id="stkImagen" placeholder="https://ejemplo.com/perfume.jpg">
-          </div>
-          <div id="grpTamanoVacios" class="form-group hidden">
-            <label>Capacidad del envase vacío</label>
-            <select id="stkTamanoVacios">
-              <option value="3ml">3ml</option>
-              <option value="5ml">5ml</option>
-              <option value="10ml">10ml</option>
-            </select>
-          </div>
-          <div class="grid-2">
+        <div id="secCrearProducto" class="hidden">
+          <h3>➕ Crear Nuevo Producto / Envase</h3>
+          <form id="formStock">
             <div class="form-group">
-              <label>Precio Base (S/)</label>
-              <input type="number" step="0.01" id="stkPrecio" value="0.00">
+              <label>Tipo de registro</label>
+              <select id="stkTipo" onchange="toggleCamposStock()">
+                <option value="Perfume Sellado">Perfume Sellado</option>
+                <option value="Perfume para Decant">Perfume Abierto (Para Decants)</option>
+                <option value="Decant Vacío">Envase Decant Vacío</option>
+              </select>
             </div>
             <div class="form-group">
-              <label>Cantidad inicial</label>
-              <input type="number" id="stkCantidad" value="1" required>
+              <label>Nombre / descripción</label>
+              <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Atomizador" required>
             </div>
-          </div>
-          <button type="submit">Guardar nuevo en inventario</button>
-        </form>
+            <div class="form-group">
+              <label>URL de Imagen del Perfume (Opcional)</label>
+              <input type="url" id="stkImagen" placeholder="https://ejemplo.com/perfume.jpg">
+            </div>
+            <div id="grpTamanoVacios" class="form-group hidden">
+              <label>Capacidad del envase vacío</label>
+              <select id="stkTamanoVacios">
+                <option value="3ml">3ml</option>
+                <option value="5ml">5ml</option>
+                <option value="10ml">10ml</option>
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Precio Base (S/)</label>
+                <input type="number" step="0.01" id="stkPrecio" value="0.00">
+              </div>
+              <div class="form-group">
+                <label>Cantidad inicial</label>
+                <input type="number" id="stkCantidad" value="1" required>
+              </div>
+            </div>
+            <button type="submit">Guardar nuevo en inventario</button>
+          </form>
+        </div>
 
-        <h3 style="margin-top:28px;">📦 Control de Inventario Categorizado</h3>
+        <h3 style="margin-top:10px;">📦 Control de Inventario Categorizado</h3>
         
         <div class="search-box">
           <input type="text" id="inputBusqueda" placeholder="Buscar perfume por nombre..." oninput="filtrarInventario()">
@@ -361,12 +362,16 @@
       
       const btnExcel = document.getElementById('btnExportarExcel');
       const btnAsistenciaExcel = document.getElementById('btnExportarAsistencia');
+      const secCrearProducto = document.getElementById('secCrearProducto');
+
       if (esAdmin()) {
         btnExcel.classList.remove('hidden');
         btnAsistenciaExcel.classList.remove('hidden');
+        secCrearProducto.classList.remove('hidden');
       } else {
         btnExcel.classList.add('hidden');
         btnAsistenciaExcel.classList.add('hidden');
+        secCrearProducto.classList.add('hidden');
       }
 
       cargarTodo();
@@ -425,10 +430,12 @@
               <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
             </div>
           </div>
-          <div class="stock-actions">
-            <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
-            ${p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
-          </div>
+          ${esAdmin() ? `
+            <div class="stock-actions">
+              <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar stock</button>
+              ${p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
+            </div>
+          ` : ''}
         </div>
       `).join('');
 
@@ -444,10 +451,12 @@
               <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
             </div>
           </div>
-          <div class="stock-actions">
-            <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Abrir otro sellado</button>
-            ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
-          </div>
+          ${esAdmin() ? `
+            <div class="stock-actions">
+              <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Abrir otro sellado</button>
+              ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
+            </div>
+          ` : ''}
         </div>
       `).join('');
 
@@ -463,15 +472,19 @@
               <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
             </div>
           </div>
-          <div class="stock-actions">
-            <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar stock</button>
-            ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
-          </div>
+          ${esAdmin() ? `
+            <div class="stock-actions">
+              <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar stock</button>
+              ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
+            </div>
+          ` : ''}
         </div>
       `).join('');
     }
 
     async function abrirPerfumeSellado(idSellado) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
+
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
 
@@ -502,6 +515,8 @@
     }
 
     async function sumarStock(id, stockActual) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden gestionar el stock.');
+
       const producto = listaProductos.find(p => p.id === id);
       if (!producto) return;
 
@@ -541,6 +556,7 @@
     }
 
     async function marcarComoVacio(id, nombre, stockActual) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
       if (stockActual <= 0) return alert(`"${nombre}" ya no tiene unidades disponibles.`);
 
       const confirmar = confirm(`¿Confirmas que se terminó 1 botella de "${nombre}"?\n\nStock actual: ${stockActual} ➔ Quedarán: ${stockActual - 1}`);
@@ -718,6 +734,8 @@
 
     document.getElementById('formStock').addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden crear nuevos productos.');
+
       const tipo = document.getElementById('stkTipo').value;
       const nombreInput = document.getElementById('stkNombre').value.trim();
       const imagenInput = document.getElementById('stkImagen').value.trim();
