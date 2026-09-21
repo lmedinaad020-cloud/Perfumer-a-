@@ -8,7 +8,10 @@
   <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
+  <!-- SUPABASE & SHEETJS (PARA EXPORTAR EXCEL CON FORMATO Y COLORES) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-style-s@0.8.13/dist/xlsx.full.min.js"></script>
+
   <style>
     :root {
       --night: #031a34;
@@ -276,7 +279,7 @@
       <div id="tab-historial" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
           <h3 style="margin:0;">📊 Historial de ventas</h3>
-          <button onclick="exportarCSVExcel()" class="btn-add" style="padding:8px 14px; font-size:0.8rem;">📥 Exportar a Excel (.CSV)</button>
+          <button onclick="exportarExcelProfesional()" class="btn-add" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel Profesional (.xlsx)</button>
         </div>
         <div id="listaVentas">Cargando ventas...</div>
       </div>
@@ -780,32 +783,65 @@
       document.getElementById('modalImgComprobante').src = '';
     }
 
-    // EXPORTACIÓN A EXCEL LIMPIA Y ORGANIZADA POR COLUMNAS
-    function exportarCSVExcel() {
-      if (!listaVentasCache.length) return alert('No hay ventas grabadas para exportar.');
+    // EXPORTACIÓN EXCEL PROFESIONAL CON COLORES, ESTILOS Y FORMATO DE COLUMNAS
+    function exportarExcelProfesional() {
+      if (!listaVentasCache.length) return alert('No hay ventas para exportar.');
 
-      // Encabezado con instrucción sep=; para Excel en español
-      let csvContent = "sep=;\nID;Fecha;Productos Vendidos;Monto Total (S/);Vendedor;Canal y Pago\n";
+      // Encabezados de la tabla
+      const headers = ["ID", "Fecha y Hora", "Detalle de Productos Vendidos", "Monto Total", "Vendedor", "Canal / Pago", "Tiene Comprobante"];
+      const dataRows = [headers];
 
       listaVentasCache.forEach(v => {
-        const id = v.id || '';
-        const fecha = new Date(v.fecha).toLocaleString();
-        const productos = `"${(v.producto_nombre || '').replace(/"/g, '""')}"`;
-        const monto = (v.monto_total || 0).toFixed(2);
-        const vendedor = `"${(v.vendedor_email || '').replace(/"/g, '""')}"`;
-        const canal = `"${(v.ubicacion_venta || '').replace(/"/g, '""')}"`;
-
-        csvContent += `${id};${fecha};${productos};${monto};${vendedor};${canal}\n`;
+        dataRows.push([
+          v.id || '',
+          new Date(v.fecha).toLocaleString(),
+          v.producto_nombre || '',
+          v.monto_total || 0,
+          v.vendedor_email || '',
+          v.ubicacion_venta || '',
+          v.comprobante_url ? 'SÍ' : 'NO'
+        ]);
       });
 
-      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `Historial_Ventas_ALPHA_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Crear Hoja de Trabajo
+      const ws = XLSX.utils.aoa_to_sheet(dataRows);
+
+      // Definir anchos de columna dinámicos
+      ws['!cols'] = [
+        { wch: 8 },  // ID
+        { wch: 20 }, // Fecha
+        { wch: 45 }, // Productos
+        { wch: 15 }, // Monto
+        { wch: 25 }, // Vendedor
+        { wch: 28 }, // Canal
+        { wch: 18 }  // Comprobante
+      ];
+
+      // Aplicar Estilos CSS a los Encabezados (Fila 1)
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const address = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (!ws[address]) continue;
+        ws[address].s = {
+          fill: { fgColor: { rgb: "0B3156" } }, // Azul noche corporativo
+          font: { bold: true, color: { rgb: "F1C36D" }, sz: 11 }, // Texto dorado
+          alignment: { horizontal: "center", vertical: "center" }
+        };
+      }
+
+      // Formato numérico de moneda (S/) para la columna de Monto Total (Columna D)
+      for (let R = 1; R <= range.e.r; ++R) {
+        const address = XLSX.utils.encode_cell({ r: R, c: 3 });
+        if (ws[address]) {
+          ws[address].z = '"S/" #,##0.00';
+        }
+      }
+
+      // Crear Libro y guardar archivo .xlsx
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Historial de Ventas");
+
+      XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
   </script>
 </body>
