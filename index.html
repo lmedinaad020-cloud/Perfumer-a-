@@ -81,7 +81,6 @@
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
-    /* MODAL DE VISUALIZACIÓN DE COMPROBANTE */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
     .modal-content { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
@@ -275,7 +274,10 @@
 
       <!-- TAB HISTORIAL -->
       <div id="tab-historial" class="card hidden">
-        <h3>📊 Historial de ventas</h3>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <h3 style="margin:0;">📊 Historial de ventas</h3>
+          <button onclick="exportarCSVExcel()" class="btn-add" style="padding:8px 14px; font-size:0.8rem;">📥 Exportar a Excel (.CSV)</button>
+        </div>
         <div id="listaVentas">Cargando ventas...</div>
       </div>
     </section>
@@ -551,7 +553,6 @@
       }
     }
 
-    // COMPRESIÓN OPTIMIZADA DE FOTO COMPROBANTE
     function previsualizarComprobante(e) {
       const file = e.target.files[0];
       if (!file) {
@@ -565,7 +566,7 @@
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          const maxDimension = 800; // Ancho/alto máximo recomendado
+          const maxDimension = 800;
           let width = img.width;
           let height = img.height;
 
@@ -582,7 +583,6 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Calidad 70% compresión JPEG
           comprobanteBase64 = canvas.toDataURL('image/jpeg', 0.7);
           document.getElementById('imgComprobantePreview').src = comprobanteBase64;
           document.getElementById('previewComprobanteContainer').classList.remove('hidden');
@@ -767,7 +767,6 @@
       `).join('');
     }
 
-    // FUNCIONES DEL MODAL COMPROBANTE
     function abrirModalComprobante(idx) {
       const venta = listaVentasCache[idx];
       if (venta && venta.comprobante_url) {
@@ -779,6 +778,34 @@
     function cerrarModalComprobante() {
       document.getElementById('modalComprobante').classList.add('hidden');
       document.getElementById('modalImgComprobante').src = '';
+    }
+
+    // EXPORTACIÓN A EXCEL LIMPIA Y ORGANIZADA POR COLUMNAS
+    function exportarCSVExcel() {
+      if (!listaVentasCache.length) return alert('No hay ventas grabadas para exportar.');
+
+      // Encabezado con instrucción sep=; para Excel en español
+      let csvContent = "sep=;\nID;Fecha;Productos Vendidos;Monto Total (S/);Vendedor;Canal y Pago\n";
+
+      listaVentasCache.forEach(v => {
+        const id = v.id || '';
+        const fecha = new Date(v.fecha).toLocaleString();
+        const productos = `"${(v.producto_nombre || '').replace(/"/g, '""')}"`;
+        const monto = (v.monto_total || 0).toFixed(2);
+        const vendedor = `"${(v.vendedor_email || '').replace(/"/g, '""')}"`;
+        const canal = `"${(v.ubicacion_venta || '').replace(/"/g, '""')}"`;
+
+        csvContent += `${id};${fecha};${productos};${monto};${vendedor};${canal}\n`;
+      });
+
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Historial_Ventas_ALPHA_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
 </body>
