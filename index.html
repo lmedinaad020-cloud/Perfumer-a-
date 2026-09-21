@@ -8,7 +8,7 @@
   <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
-  <!-- SUPABASE & SHEETJS ESTÁNDAR (EXPORTACIÓN A EXCEL 100% GARANTIZADA) -->
+  <!-- SUPABASE & SHEETJS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
@@ -279,7 +279,7 @@
       <div id="tab-historial" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
           <h3 style="margin:0;">📊 Historial de ventas</h3>
-          <button onclick="exportarExcel()" class="btn-add" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
+          <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
         </div>
         <div id="listaVentas">Cargando ventas...</div>
       </div>
@@ -330,6 +330,15 @@
       document.getElementById('sec-login').classList.add('hidden');
       document.getElementById('sec-app').classList.remove('hidden');
       document.getElementById('userLogged').innerText = `Usuario: ${usuarioActual.email} ${esAdmin() ? ' (ADMIN)' : ''}`;
+      
+      // MOSTRAR O OCULTAR BOTÓN DE EXCEL SEGÚN ROL DE ADMIN
+      const btnExcel = document.getElementById('btnExportarExcel');
+      if (esAdmin()) {
+        btnExcel.classList.remove('hidden');
+      } else {
+        btnExcel.classList.add('hidden');
+      }
+
       cargarTodo();
     }
 
@@ -783,8 +792,13 @@
       document.getElementById('modalImgComprobante').src = '';
     }
 
-    // EXPORTACIÓN A EXCEL (.XLSX) DIRECTA Y SÓLIDA
+    // EXPORTACIÓN A EXCEL PROTEGIDA
     function exportarExcel() {
+      // VALIDACIÓN DE SEGURIDAD INTERNA
+      if (!esAdmin()) {
+        return alert('Acceso denegado: Solo los administradores pueden descargar el archivo de ventas.');
+      }
+
       if (!listaVentasCache || !listaVentasCache.length) {
         return alert('No hay ventas registradas para exportar.');
       }
@@ -793,7 +807,6 @@
         return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
       }
 
-      // Preparar matriz de datos con encabezados claros
       const datosExcel = [
         ["ID", "Fecha y Hora", "Productos Vendidos", "Monto Total (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
       ];
@@ -810,10 +823,8 @@
         ]);
       });
 
-      // Convertir arreglo a Hoja de Excel
       const ws = XLSX.utils.aoa_to_sheet(datosExcel);
 
-      // Calcular anchos de columna automáticamente según el texto más largo
       const colWidths = datosExcel[0].map((col, colIdx) => {
         let maxLen = col.toString().length;
         datosExcel.forEach(row => {
@@ -824,11 +835,9 @@
       });
       ws['!cols'] = colWidths;
 
-      // Crear Libro de trabajo
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Ventas");
 
-      // Generar y descargar archivo .xlsx
       const fechaHoy = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${fechaHoy}.xlsx`);
     }
