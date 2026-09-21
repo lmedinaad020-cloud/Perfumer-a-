@@ -25,6 +25,7 @@
       --muted: #b8c6d5;
       --success: #85b88f;
       --danger: #d99076;
+      --yape-purple: #742284;
     }
     * { box-sizing: border-box; }
     body { min-height: 100vh; margin: 0; padding: 24px 16px 40px; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ivory); background: radial-gradient(circle at 50% -10%, #124a76 0, var(--night) 42%, #021326 100%); }
@@ -54,6 +55,7 @@
     button.btn-open { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #60a5fa; font-size: .75rem; color: #fff; }
     button.btn-empty { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
     button.btn-del { width: auto; margin: 0; padding: 4px 8px; background: #b85c5c; border: none; font-size: .7rem; border-radius: 4px; color: #fff; }
+    button.btn-yape { background: linear-gradient(135deg, #8a2be2, #5c189a); border-color: #b15eff; color: #fff; }
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
@@ -210,6 +212,11 @@
             </div>
           </div>
 
+          <!-- BOTÓN PARA MOSTRAR QR DE YAPE -->
+          <div class="form-group" style="margin-top:10px;">
+            <button type="button" onclick="abrirModalQRYape()" class="btn-yape" style="padding:10px; font-size:0.85rem;">📱 Ver QR de Yape para Cobro</button>
+          </div>
+
           <div class="form-group" style="margin-top:8px;">
             <label>📸 Foto del Comprobante / Pantalla de Yape (Opcional)</label>
             <input type="file" id="vtaFotoComprobante" accept="image/*" capture="environment" onchange="previsualizarComprobante(event)">
@@ -316,6 +323,16 @@
         <h4 style="margin:0 0 12px; color:var(--gold-light);">📸 Comprobante de Pago</h4>
         <img id="modalImgComprobante" src="" alt="Comprobante de pago">
         <button onclick="cerrarModalComprobante()" style="margin-top:14px;">Cerrar</button>
+      </div>
+    </div>
+
+    <!-- MODAL VISOR DE CÓDIGO QR YAPE -->
+    <div id="modalQRYape" class="modal-overlay hidden">
+      <div class="modal-content" style="border-color:#b15eff;">
+        <h4 style="margin:0 0 8px; color:#f1c36d;">📱 Escanea para Yapear</h4>
+        <p style="margin:0 0 12px; font-size:0.8rem; color:var(--ivory);">ALPHA Perfumes y Decants</p>
+        <img id="imgQRYape" src="assets/qr-yape.png" alt="Código QR Yape" onerror="this.src='https://imgmedia.larepublica.pe/1200x735/larepublica/original/2023/08/09/64d3f1abf5921f75504abcbb.jpg'">
+        <button onclick="cerrarModalQRYape()" style="margin-top:14px; background:linear-gradient(135deg, #742284, #5c189a); border-color:#b15eff;">Cerrar QR</button>
       </div>
     </div>
   </main>
@@ -614,6 +631,14 @@
       } else {
         cardPreview.classList.add('hidden');
       }
+    }
+
+    function abrirModalQRYape() {
+      document.getElementById('modalQRYape').classList.remove('hidden');
+    }
+
+    function cerrarModalQRYape() {
+      document.getElementById('modalQRYape').classList.add('hidden');
     }
 
     function previsualizarComprobante(e) {
