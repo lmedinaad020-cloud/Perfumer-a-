@@ -8,9 +8,9 @@
   <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
-  <!-- SUPABASE & SHEETJS (PARA EXPORTAR EXCEL CON FORMATO Y COLORES) -->
+  <!-- SUPABASE & SHEETJS ESTÁNDAR (EXPORTACIÓN A EXCEL 100% GARANTIZADA) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx-style-s@0.8.13/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     :root {
@@ -279,7 +279,7 @@
       <div id="tab-historial" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
           <h3 style="margin:0;">📊 Historial de ventas</h3>
-          <button onclick="exportarExcelProfesional()" class="btn-add" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel Profesional (.xlsx)</button>
+          <button onclick="exportarExcel()" class="btn-add" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
         </div>
         <div id="listaVentas">Cargando ventas...</div>
       </div>
@@ -783,65 +783,54 @@
       document.getElementById('modalImgComprobante').src = '';
     }
 
-    // EXPORTACIÓN EXCEL PROFESIONAL CON COLORES, ESTILOS Y FORMATO DE COLUMNAS
-    function exportarExcelProfesional() {
-      if (!listaVentasCache.length) return alert('No hay ventas para exportar.');
+    // EXPORTACIÓN A EXCEL (.XLSX) DIRECTA Y SÓLIDA
+    function exportarExcel() {
+      if (!listaVentasCache || !listaVentasCache.length) {
+        return alert('No hay ventas registradas para exportar.');
+      }
 
-      // Encabezados de la tabla
-      const headers = ["ID", "Fecha y Hora", "Detalle de Productos Vendidos", "Monto Total", "Vendedor", "Canal / Pago", "Tiene Comprobante"];
-      const dataRows = [headers];
+      if (typeof XLSX === 'undefined') {
+        return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
+      }
+
+      // Preparar matriz de datos con encabezados claros
+      const datosExcel = [
+        ["ID", "Fecha y Hora", "Productos Vendidos", "Monto Total (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
+      ];
 
       listaVentasCache.forEach(v => {
-        dataRows.push([
+        datosExcel.push([
           v.id || '',
           new Date(v.fecha).toLocaleString(),
           v.producto_nombre || '',
-          v.monto_total || 0,
+          parseFloat(v.monto_total || 0),
           v.vendedor_email || '',
           v.ubicacion_venta || '',
           v.comprobante_url ? 'SÍ' : 'NO'
         ]);
       });
 
-      // Crear Hoja de Trabajo
-      const ws = XLSX.utils.aoa_to_sheet(dataRows);
+      // Convertir arreglo a Hoja de Excel
+      const ws = XLSX.utils.aoa_to_sheet(datosExcel);
 
-      // Definir anchos de columna dinámicos
-      ws['!cols'] = [
-        { wch: 8 },  // ID
-        { wch: 20 }, // Fecha
-        { wch: 45 }, // Productos
-        { wch: 15 }, // Monto
-        { wch: 25 }, // Vendedor
-        { wch: 28 }, // Canal
-        { wch: 18 }  // Comprobante
-      ];
+      // Calcular anchos de columna automáticamente según el texto más largo
+      const colWidths = datosExcel[0].map((col, colIdx) => {
+        let maxLen = col.toString().length;
+        datosExcel.forEach(row => {
+          const val = row[colIdx] ? row[colIdx].toString() : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 60) };
+      });
+      ws['!cols'] = colWidths;
 
-      // Aplicar Estilos CSS a los Encabezados (Fila 1)
-      const range = XLSX.utils.decode_range(ws['!ref']);
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const address = XLSX.utils.encode_cell({ r: 0, c: C });
-        if (!ws[address]) continue;
-        ws[address].s = {
-          fill: { fgColor: { rgb: "0B3156" } }, // Azul noche corporativo
-          font: { bold: true, color: { rgb: "F1C36D" }, sz: 11 }, // Texto dorado
-          alignment: { horizontal: "center", vertical: "center" }
-        };
-      }
-
-      // Formato numérico de moneda (S/) para la columna de Monto Total (Columna D)
-      for (let R = 1; R <= range.e.r; ++R) {
-        const address = XLSX.utils.encode_cell({ r: R, c: 3 });
-        if (ws[address]) {
-          ws[address].z = '"S/" #,##0.00';
-        }
-      }
-
-      // Crear Libro y guardar archivo .xlsx
+      // Crear Libro de trabajo
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Historial de Ventas");
+      XLSX.utils.book_append_sheet(wb, ws, "Ventas");
 
-      XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${new Date().toISOString().slice(0,10)}.xlsx`);
+      // Generar y descargar archivo .xlsx
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${fechaHoy}.xlsx`);
     }
   </script>
 </body>
