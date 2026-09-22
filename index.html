@@ -86,6 +86,14 @@
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
+    /* ESTILOS DEL HISTORIAL DE VENTAS POR DÍA */
+    .day-group { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(2,19,38,.3); }
+    .day-header { width: 100%; margin: 0; padding: 14px 16px; background: linear-gradient(135deg, rgba(11,49,86,.9), rgba(6,38,71,.9)); border: none; border-radius: 0; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--ivory); }
+    .day-header:hover { background: linear-gradient(135deg, rgba(13,58,99,1), rgba(11,49,86,1)); }
+    .day-header-title { font-size: 0.95rem; font-weight: bold; text-transform: capitalize; color: var(--gold-light); }
+    .day-header-summary { font-size: 0.83rem; color: var(--ivory); }
+    .day-content { padding: 10px 14px 14px; }
+
     .timer-card { text-align: center; background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
     .timer-display { font-size: 2.2rem; font-weight: bold; font-family: monospace; color: var(--gold-light); margin: 10px 0; }
 
@@ -95,7 +103,7 @@
 
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
-    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } }
+    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } .day-header { flex-direction: column; align-items: flex-start; gap: 4px; } }
   </style>
 </head>
 <body>
@@ -836,25 +844,80 @@
       }
     });
 
+    // HISTORIAL DE VENTAS AGRUPADO POR FECHAS Y DÍAS
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
       const contenedor = document.getElementById('listaVentas');
       if (!ventas || !ventas.length) {
-        contenedor.innerHTML = '<p>No hay ventas registradas aún.</p>';
+        contenedor.innerHTML = '<p class="empty-msg">No hay ventas registradas aún.</p>';
         return;
       }
-      contenedor.innerHTML = ventas.map((v, idx) => `
-        <div class="stock-item">
-          <div>
-            <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleString()}</p>
-            <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
-            <p class="price" style="margin:0;font-size:.83rem;">Total: S/ ${v.monto_total.toFixed(2)}</p>
-            <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
-            ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="margin-top:8px; padding:4px 10px; font-size:0.75rem;">📸 Ver Captura/Comprobante</button>` : ''}
+
+      // Agrupar ventas por fecha YYYY-MM-DD
+      const grupos = {};
+      ventas.forEach((v, index) => {
+        const fechaObj = new Date(v.fecha);
+        const claveFecha = fechaObj.toISOString().split('T')[0];
+        
+        if (!grupos[claveFecha]) {
+          grupos[claveFecha] = {
+            fechaFormateada: fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            ventas: [],
+            totalGanado: 0
+          };
+        }
+        grupos[claveFecha].ventas.push({ venta: v, indexGlobal: index });
+        grupos[claveFecha].totalGanado += parseFloat(v.monto_total || 0);
+      });
+
+      const clavesOrdenadas = Object.keys(grupos).sort().reverse();
+
+      contenedor.innerHTML = clavesOrdenadas.map((clave, dayIdx) => {
+        const grupo = grupos[clave];
+        const numVentas = grupo.ventas.length;
+        const totalSoles = grupo.totalGanado.toFixed(2);
+        const esPrimerDia = dayIdx === 0;
+
+        const htmlVentas = grupo.ventas.map(item => {
+          const v = item.venta;
+          const idx = item.indexGlobal;
+          return `
+            <div class="stock-item" style="margin-top:8px;">
+              <div>
+                <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleTimeString()}</p>
+                <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
+                <p class="price" style="margin:0;font-size:.83rem;">Total: S/ ${v.monto_total.toFixed(2)}</p>
+                <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
+                ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="margin-top:8px; padding:4px 10px; font-size:0.75rem;">📸 Ver Captura/Comprobante</button>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="day-group">
+            <button type="button" class="day-header" onclick="toggleDiaHistorial('${clave}')">
+              <span class="day-header-title">📅 ${grupo.fechaFormateada}</span>
+              <span class="day-header-summary">
+                <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong> | Ganancia: <strong style="color:var(--gold-light);">S/ ${totalSoles}</strong> <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
+              </span>
+            </button>
+            <div id="content-${clave}" class="day-content ${esPrimerDia ? '' : 'hidden'}">
+              ${htmlVentas}
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+    }
+
+    function toggleDiaHistorial(claveFecha) {
+      const el = document.getElementById(`content-${claveFecha}`);
+      const arrow = document.getElementById(`arrow-${claveFecha}`);
+      if (el) {
+        const estaOculto = el.classList.toggle('hidden');
+        if (arrow) arrow.innerText = estaOculto ? '▼' : '▲';
+      }
     }
 
     function abrirModalComprobante(idx) {
