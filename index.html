@@ -8,9 +8,11 @@
   <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
-  <!-- SUPABASE & SHEETJS -->
+  <!-- SUPABASE, SHEETJS & CHART.JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
   <style>
     :root {
@@ -79,7 +81,7 @@
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
     .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
 
-    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 9px; margin-bottom: 14px; }
+    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 99px; margin-bottom: 14px; }
     .preview-card img { width: 52px; height: 52px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
 
     .cart-box { background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; margin-top: 18px; }
@@ -94,6 +96,9 @@
     .day-header-title { font-size: 0.92rem; font-weight: bold; text-transform: capitalize; color: var(--gold-light); }
     .day-header-summary { font-size: 0.83rem; color: var(--ivory); }
     .day-content { padding: 10px 14px 14px; }
+
+    /* CONTENEDOR DEL GRÁFICO DE VENTAS */
+    .chart-container { background: rgba(2,19,38,.7); border: 1px solid var(--gold); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
 
     .timer-card { text-align: center; background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
     .timer-display { font-size: 2.2rem; font-weight: bold; font-family: monospace; color: var(--gold-light); margin: 10px 0; }
@@ -305,6 +310,13 @@
           <h3 style="margin:0;">📊 Historial por Cierre de Caja Diaria</h3>
           <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
         </div>
+
+        <!-- GRÁFICO DE BARRAS DE VENTAS Y METAS -->
+        <div class="chart-container">
+          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
+          <canvas id="chartVentasDiarias" height="180"></canvas>
+        </div>
+
         <div id="listaVentas">Cargando historial...</div>
       </div>
 
@@ -363,6 +375,10 @@
     let listaAsistenciaCache = [];
     let registroAsistenciaActivo = null;
     let intervalTimer = null;
+    let miGraficoVentas = null;
+
+    const PUNTO_EQUILIBRIO = 140;
+    const META_DIARIA = 199;
 
     const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
 
@@ -729,7 +745,6 @@
 
       carritoVenta.push(item);
 
-      // OFRECER EL DECANT DE 2ML DE REGALO SI COMPRAN PERFUME SELLADO
       if (tipoVenta === 'Perfume Sellado') {
         const quiereRegalo = confirm(`🎁 ¡PROMOCIÓN DE REGALO!\n\n¿Deseas agregar un Decant de 2ml DE REGALO para esta compra de "${perfumeObj.nombre}"?`);
         if (quiereRegalo) {
@@ -900,13 +915,14 @@
       }
     });
 
-    // HISTORIAL DE VENTAS CON CIERRE DE CAJA HASTA LAS 11:59 PM (POR FECHA LOCAL)
+    // HISTORIAL DE VENTAS CON GRÁFICO DE BARRAS, METAS Y CIERRE DE CAJA
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
       const contenedor = document.getElementById('listaVentas');
       if (!ventas || !ventas.length) {
         contenedor.innerHTML = '<p class="empty-msg">No hay ventas registradas aún.</p>';
+        renderizarGraficoVentas({});
         return;
       }
 
@@ -915,7 +931,6 @@
       ventas.forEach((v, index) => {
         const fechaObj = new Date(v.fecha);
         
-        // Obtener la fecha local exacta (Año, Mes, Día) evitando desfasamiento por UTC
         const ano = fechaObj.getFullYear();
         const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
         const dia = String(fechaObj.getDate()).padStart(2, '0');
@@ -924,6 +939,7 @@
         if (!grupos[claveFechaLocal]) {
           grupos[claveFechaLocal] = {
             fechaFormateada: fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            etiquetaCorta: fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
             ventas: [],
             totalGanado: 0
           };
@@ -932,6 +948,8 @@
         grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index });
         grupos[claveFechaLocal].totalGanado += parseFloat(v.monto_total || 0);
       });
+
+      renderizarGraficoVentas(grupos);
 
       const clavesOrdenadas = Object.keys(grupos).sort().reverse();
 
@@ -971,6 +989,102 @@
           </div>
         `;
       }).join('');
+    }
+
+    // GENERAR EL GRÁFICO BARRAS DIARIAS CON LÍNEAS DE REFERENCIA (METAS)
+    function renderizarGraficoVentas(grupos) {
+      const ctx = document.getElementById('chartVentasDiarias');
+      if (!ctx) return;
+
+      const clavesOrdenadas = Object.keys(grupos).sort(); // Cronológico para el gráfico
+      const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
+      const dataGanancias = clavesOrdenadas.map(c => grupos[c].totalGanado);
+
+      const coloresBarras = dataGanancias.map(valor => {
+        if (valor >= META_DIARIA) return '#85b88f'; // Verde si supera meta
+        if (valor >= PUNTO_EQUILIBRIO) return '#f1c36d'; // Dorado si cubre equilibrio
+        return '#d99076'; // Rojo si está por debajo de equilibrio
+      });
+
+      if (miGraficoVentas) {
+        miGraficoVentas.destroy();
+      }
+
+      miGraficoVentas = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Ganancia Diaria (S/)',
+            data: dataGanancias,
+            backgroundColor: coloresBarras,
+            borderColor: 'rgba(226, 177, 86, 0.6)',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` Ganado: S/ ${context.parsed.y.toFixed(2)}`;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                lineEquilibrio: {
+                  type: 'line',
+                  yMin: PUNTO_EQUILIBRIO,
+                  yMax: PUNTO_EQUILIBRIO,
+                  borderColor: '#efc66e',
+                  borderWidth: 2,
+                  borderDash: [6, 6],
+                  label: {
+                    display: true,
+                    content: `P. Equilibrio: S/ ${PUNTO_EQUILIBRIO}`,
+                    position: 'start',
+                    backgroundColor: 'rgba(3, 26, 52, 0.8)',
+                    color: '#efc66e',
+                    font: { size: 10 }
+                  }
+                },
+                lineMeta: {
+                  type: 'line',
+                  yMin: META_DIARIA,
+                  yMax: META_DIARIA,
+                  borderColor: '#85b88f',
+                  borderWidth: 2,
+                  borderDash: [4, 4],
+                  label: {
+                    display: true,
+                    content: `Meta: S/ ${META_DIARIA}`,
+                    position: 'end',
+                    backgroundColor: 'rgba(3, 26, 52, 0.8)',
+                    color: '#85b88f',
+                    font: { size: 10 }
+                  }
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#b8c6d5' },
+              grid: { color: 'rgba(246,240,231,0.08)' }
+            },
+            x: {
+              ticks: { color: '#b8c6d5' },
+              grid: { display: false }
+            }
+          }
+        }
+      });
     }
 
     function toggleDiaHistorial(claveFecha) {
