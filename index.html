@@ -27,12 +27,13 @@
       --muted: #b8c6d5;
       --success: #85b88f;
       --danger: #d99076;
+      --warning: #f1c36d;
       --yape-purple: #742284;
     }
     * { box-sizing: border-box; }
     body { min-height: 100vh; margin: 0; padding: 24px 16px 40px; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ivory); background: radial-gradient(circle at 50% -10%, #124a76 0, var(--night) 42%, #021326 100%); }
     body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .16; background-image: linear-gradient(90deg, transparent 49%, rgba(241,195,109,.15) 50%, transparent 51%); background-size: 84px 84px; }
-    .app-shell { position: relative; width: min(100%, 900px); margin: auto; }
+    .app-shell { position: relative; width: min(100%, 950px); margin: auto; }
     .brand { display: flex; flex-direction: column; align-items: center; text-align: center; }
     .brand img { width: 148px; height: 148px; object-fit: contain; border-radius: 50%; filter: drop-shadow(0 10px 22px rgba(0,0,0,.32)); }
     .brand-name { margin: -2px 0 2px; font-family: Georgia, serif; font-weight: 500; font-size: clamp(1.55rem, 4vw, 2.15rem); letter-spacing: .38em; padding-left: .38em; color: var(--ivory); }
@@ -53,35 +54,52 @@
     button { width: 100%; padding: 12px 14px; background: linear-gradient(135deg, #dba648, #ae7628); color: #fffaf0; border: 1px solid #efc66e; border-radius: 7px; font: 700 .87rem inherit; letter-spacing: .02em; cursor: pointer; margin-top: 8px; transition: transform .15s, filter .15s; }
     button:hover { filter: brightness(1.08); transform: translateY(-1px); }
     button.btn-sec { background: transparent; border-color: rgba(246,240,231,.3); color: var(--muted); }
-    button.btn-add { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #5e986c, #3d7452); border-color: #8fc49a; font-size: .75rem; }
-    button.btn-open { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #60a5fa; font-size: .75rem; color: #fff; }
-    button.btn-empty { width: auto; margin: 0; padding: 8px 11px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
+    button.btn-add { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #5e986c, #3d7452); border-color: #8fc49a; font-size: .75rem; }
+    button.btn-open { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #60a5fa; font-size: .75rem; color: #fff; }
+    button.btn-empty { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
     button.btn-del { width: auto; margin: 0; padding: 4px 8px; background: #b85c5c; border: none; font-size: .7rem; border-radius: 4px; color: #fff; }
     button.btn-yape { background: linear-gradient(135deg, #8a2be2, #5c189a); border-color: #b15eff; color: #fff; }
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
     .badge-gift { background: rgba(133, 184, 143, .25); border-color: #85b88f; color: #a3e6af; }
+    .badge-ok { background: rgba(133, 184, 143, .2); border-color: #85b88f; color: #a3e6af; }
+    .badge-low { background: rgba(241, 195, 109, .2); border-color: #f1c36d; color: #f1c36d; }
+    .badge-zero { background: rgba(217, 144, 118, .2); border-color: #d99076; color: #ffb399; }
     .price { color: var(--gold-light); font-weight: 700; }
     .hidden { display: none !important; }
     .nav-tabs { display: flex; gap: 9px; margin: 0 0 16px; flex-wrap: wrap; }
     .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; min-width: 100px; }
     .nav-tabs button:hover { border-color: var(--gold); }
     
-    .stock-item { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; margin-top: 9px; background: rgba(2,19,38,.45); border-radius: 11px; border: 1px solid rgba(246,240,231,.12); transition: border-color 0.2s; }
-    .stock-item:hover { border-color: var(--gold); }
-    .stock-info-wrapper { display: flex; align-items: center; gap: 14px; }
-    .product-img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); flex-shrink: 0; }
-    .stock-actions { display: flex; gap: 6px; flex-direction: column; align-items: flex-end; }
-    
-    .section-title { margin-top: 25px; margin-bottom: 10px; font-size: 1rem; color: var(--gold-light); border-bottom: 1px solid var(--border); padding-bottom: 5px; font-family: Georgia, serif; }
-    .empty-msg { font-size: 0.8rem; color: var(--muted); font-style: italic; margin: 8px 0; }
-    
+    /* DISEÑO VISUAL MEJORADO DEL INVENTARIO */
+    .inv-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .inv-summary-card { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+    .inv-summary-card h5 { margin: 0; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .inv-summary-card .val { font-size: 1.3rem; font-weight: bold; color: var(--gold-light); margin-top: 4px; }
+
+    .inv-filter-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; }
+    .chip-btn { flex: none; width: auto; margin: 0; padding: 6px 14px; font-size: 0.75rem; border-radius: 999px; background: rgba(2,19,38,.6); border: 1px solid var(--border); color: var(--ivory); cursor: pointer; }
+    .chip-btn.active { background: var(--gold); color: #000; font-weight: bold; border-color: var(--gold-light); }
+
+    .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 12px; }
+    .product-card { background: rgba(2,19,38,.6); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s, border-color 0.2s; position: relative; }
+    .product-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+    .product-card-img-wrapper { width: 100%; height: 130px; background: rgba(0,0,0,0.3); position: relative; overflow: hidden; }
+    .product-card-img { width: 100%; height: 100%; object-fit: cover; }
+    .product-card-badge { position: absolute; top: 8px; left: 8px; }
+    .product-card-body { padding: 12px; display: flex; flex-direction: column; flex-grow: 1; justify-content: space-between; }
+    .product-card-title { margin: 0 0 6px; font-size: 0.9rem; font-weight: bold; color: var(--ivory); line-height: 1.25; }
+    .product-card-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+    .product-card-stock-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin: 6px 0 10px; }
+    .product-card-stock-fill { height: 100%; border-radius: 2px; }
+    .product-card-actions { display: flex; gap: 6px; flex-direction: column; margin-top: 6px; }
+
     .search-box { position: relative; margin: 8px 0 10px; }
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
     .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
 
-    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 99px; margin-bottom: 14px; }
+    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 9px; margin-bottom: 14px; }
     .preview-card img { width: 52px; height: 52px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
 
     .cart-box { background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; margin-top: 18px; }
@@ -109,7 +127,7 @@
 
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
-    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .stock-item { align-items: flex-start; flex-direction: column; } .stock-actions { flex-direction: row; width: 100%; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } .day-header { flex-direction: column; align-items: flex-start; gap: 4px; } }
+    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } .day-header { flex-direction: column; align-items: flex-start; gap: 4px; } .inv-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
   </style>
 </head>
 <body>
@@ -244,7 +262,7 @@
         </form>
       </div>
 
-      <!-- TAB STOCK -->
+      <!-- TAB STOCK (NUEVO DISEÑO INTUITIVO) -->
       <div id="tab-stock" class="card hidden">
         <div id="secCrearProducto" class="hidden">
           <h3>➕ Crear Nuevo Producto / Envase</h3>
@@ -288,20 +306,38 @@
           </form>
         </div>
 
-        <h3 style="margin-top:10px;">📦 Control de Inventario Categorizado</h3>
+        <h3 style="margin-top:10px;">📦 Catálogo e Inventario</h3>
+
+        <!-- TARJETAS DE MÉTRICAS RÁPIDAS -->
+        <div class="inv-summary-grid">
+          <div class="inv-summary-card">
+            <h5>Total Ítems</h5>
+            <div class="val" id="metrTotal">0</div>
+          </div>
+          <div class="inv-summary-card">
+            <h5>Stock Bajo</h5>
+            <div class="val" id="metrBajo" style="color:var(--warning);">0</div>
+          </div>
+          <div class="inv-summary-card">
+            <h5>Agotados</h5>
+            <div class="val" id="metrAgotado" style="color:var(--danger);">0</div>
+          </div>
+        </div>
         
         <div class="search-box">
-          <input type="text" id="inputBusqueda" placeholder="Buscar perfume por nombre..." oninput="filtrarInventario()">
+          <input type="text" id="inputBusqueda" placeholder="Buscar producto por nombre..." oninput="filtrarInventario()">
         </div>
 
-        <div class="section-title">🧴 Perfumes Sellados</div>
-        <div id="listaSellados">Cargando...</div>
+        <!-- FILTROS RÁPIDOS POR CATEGORÍA -->
+        <div class="inv-filter-chips">
+          <button class="chip-btn active" onclick="filtrarCategoriaChip('TODOS', this)">🌐 Todos</button>
+          <button class="chip-btn" onclick="filtrarCategoriaChip('SELLADO', this)">🧴 Sellados</button>
+          <button class="chip-btn" onclick="filtrarCategoriaChip('DECANT', this)">🧪 Abiertos p/ Decant</button>
+          <button class="chip-btn" onclick="filtrarCategoriaChip('VACIO', this)">📦 Envases Vacíos</button>
+        </div>
 
-        <div class="section-title">🧪 Perfumes Abiertos (para Decants)</div>
-        <div id="listaAbiertos">Cargando...</div>
-
-        <div class="section-title">📦 Envases Decants Vacíos</div>
-        <div id="listaVacios">Cargando...</div>
+        <!-- CUADRÍCULA VISUAL DE PRODUCTOS -->
+        <div id="gridInventario" class="inv-grid">Cargando catálogo...</div>
       </div>
 
       <!-- TAB HISTORIAL -->
@@ -376,6 +412,7 @@
     let registroAsistenciaActivo = null;
     let intervalTimer = null;
     let miGraficoVentas = null;
+    let categoriaFiltroActual = 'TODOS';
 
     const PUNTO_EQUILIBRIO = 140;
     const META_DIARIA = 199;
@@ -453,77 +490,84 @@
       renderizarStock();
     }
 
+    function filtrarCategoriaChip(cat, btnEl) {
+      categoriaFiltroActual = cat;
+      document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+      btnEl.classList.add('active');
+      renderizarStock();
+    }
+
     function renderizarStock() {
       const query = document.getElementById('inputBusqueda').value.toLowerCase().trim();
 
-      const filtradosGlobal = listaProductos.filter(p => p.nombre.toLowerCase().includes(query));
+      // Cálculo de métricas
+      document.getElementById('metrTotal').innerText = listaProductos.length;
+      document.getElementById('metrBajo').innerText = listaProductos.filter(p => p.stock > 0 && p.stock <= 4).length;
+      document.getElementById('metrAgotado').innerText = listaProductos.filter(p => p.stock === 0).length;
 
-      const sellados = filtradosGlobal.filter(p => p.tipo === 'Perfume Sellado');
-      const abiertos = filtradosGlobal.filter(p => p.tipo === 'Perfume para Decant');
-      const vacios = filtradosGlobal.filter(p => p.tipo === 'Decant Vacío');
+      let filtrados = listaProductos.filter(p => p.nombre.toLowerCase().includes(query));
 
-      const contSellados = document.getElementById('listaSellados');
-      contSellados.innerHTML = !sellados.length ? '<p class="empty-msg">No hay perfumes sellados que coincidan.</p>' : sellados.map(p => `
-        <div class="stock-item">
-          <div class="stock-info-wrapper">
-            <img src="${p.imagen_url || IMG_DEFAULT}" class="product-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-            <div>
-              <span class="badge">SELLADO</span>
-              <h4 style="margin:5px 0 3px;">${p.nombre}</h4>
-              ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-              <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
+      if (categoriaFiltroActual === 'SELLADO') filtrados = filtrados.filter(p => p.tipo === 'Perfume Sellado');
+      else if (categoriaFiltroActual === 'DECANT') filtrados = filtrados.filter(p => p.tipo === 'Perfume para Decant');
+      else if (categoriaFiltroActual === 'VACIO') filtrados = filtrados.filter(p => p.tipo === 'Decant Vacío');
+
+      const contGrid = document.getElementById('gridInventario');
+      if (!filtrados.length) {
+        contGrid.innerHTML = '<p class="empty-msg" style="grid-column: 1/-1; text-align:center; padding:20px;">No se encontraron productos en esta categoría.</p>';
+        return;
+      }
+
+      contGrid.innerHTML = filtrados.map(p => {
+        let badgeClass = 'badge-ok';
+        let badgeText = `Stock: ${p.stock}`;
+        let barColor = 'var(--success)';
+        let pct = Math.min((p.stock / 10) * 100, 100);
+
+        if (p.stock === 0) {
+          badgeClass = 'badge-zero';
+          badgeText = 'AGOTADO';
+          barColor = 'var(--danger)';
+          pct = 100;
+        } else if (p.stock <= 4) {
+          badgeClass = 'badge-low';
+          badgeText = `Bajo: ${p.stock}`;
+          barColor = 'var(--warning)';
+        }
+
+        let labelTipo = 'SELLADO';
+        if (p.tipo === 'Perfume para Decant') labelTipo = 'ABIERTO';
+        else if (p.tipo === 'Decant Vacío') labelTipo = `ENVASE ${p.tamano ? `(${p.tamano})` : ''}`;
+
+        return `
+          <div class="product-card">
+            <div class="product-card-img-wrapper">
+              <img src="${p.imagen_url || IMG_DEFAULT}" class="product-card-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
+              <span class="badge product-card-badge">${labelTipo}</span>
+            </div>
+            <div class="product-card-body">
+              <div>
+                <h4 class="product-card-title">${p.nombre}</h4>
+                ${esAdmin() ? `<div class="product-card-meta">Base: <strong style="color:var(--gold-light);">S/ ${parseFloat(p.precio).toFixed(2)}</strong></div>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="badge ${badgeClass}">${badgeText}</span>
+                  <span style="font-size:0.75rem; color:var(--muted);">${p.stock} unids.</span>
+                </div>
+                <div class="product-card-stock-bar">
+                  <div class="product-card-stock-fill" style="width: ${pct}%; background: ${barColor};"></div>
+                </div>
+              </div>
+
+              ${esAdmin() ? `
+                <div class="product-card-actions">
+                  <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar Stock</button>
+                  ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
+                  ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
+                </div>
+              ` : ''}
             </div>
           </div>
-          ${esAdmin() ? `
-            <div class="stock-actions">
-              <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar stock</button>
-              ${p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
-
-      const contAbiertos = document.getElementById('listaAbiertos');
-      contAbiertos.innerHTML = !abiertos.length ? '<p class="empty-msg">No hay perfumes abiertos que coincidan.</p>' : abiertos.map(p => `
-        <div class="stock-item">
-          <div class="stock-info-wrapper">
-            <img src="${p.imagen_url || IMG_DEFAULT}" class="product-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-            <div>
-              <span class="badge">ABIERTO / DECANT</span>
-              <h4 style="margin:5px 0 3px;">${p.nombre}</h4>
-              ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-              <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(VACÍO / AGOTADO)</span>' : ''}</p>
-            </div>
-          </div>
-          ${esAdmin() ? `
-            <div class="stock-actions">
-              <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Abrir otro sellado</button>
-              ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 vacío</button>` : ''}
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
-
-      const contVacios = document.getElementById('listaVacios');
-      contVacios.innerHTML = !vacios.length ? '<p class="empty-msg">No hay envases vacíos que coincidan.</p>' : vacios.map(p => `
-        <div class="stock-item">
-          <div class="stock-info-wrapper">
-            <img src="${p.imagen_url || IMG_DEFAULT}" class="product-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-            <div>
-              <span class="badge">ENVASE ${p.tamano ? `(${p.tamano})` : ''}</span>
-              <h4 style="margin:5px 0 3px;">${p.nombre}</h4>
-              ${esAdmin() ? `<p class="price" style="margin:0;font-size:.8rem;">Precio Base: S/ ${p.precio}</p>` : ''}
-              <p style="margin:3px 0 0;font-size:.8rem;">Disponible: <strong>${p.stock} unids.</strong> ${p.stock === 0 ? '<span style="color:var(--danger); font-weight:bold;">(AGOTADO)</span>' : ''}</p>
-            </div>
-          </div>
-          ${esAdmin() ? `
-            <div class="stock-actions">
-              <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar stock</button>
-              ${p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
-            </div>
-          ` : ''}
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     async function abrirPerfumeSellado(idSellado) {
@@ -603,7 +647,7 @@
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
       if (stockActual <= 0) return alert(`"${nombre}" ya no tiene unidades disponibles.`);
 
-      const confirmar = confirm(`¿Confirmas que se terminó 1 botella de "${nombre}"?\n\nStock actual: ${stockActual} ➔ Quedarán: ${stockActual - 1}`);
+      const confirmar = confirm(`¿Confirmas que se terminó 1 unidad de "${nombre}"?\n\nStock actual: ${stockActual} ➔ Quedarán: ${stockActual - 1}`);
       if (!confirmar) return;
 
       const nuevoStock = stockActual - 1;
@@ -996,14 +1040,14 @@
       const ctx = document.getElementById('chartVentasDiarias');
       if (!ctx) return;
 
-      const clavesOrdenadas = Object.keys(grupos).sort(); // Cronológico para el gráfico
+      const clavesOrdenadas = Object.keys(grupos).sort();
       const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
       const dataGanancias = clavesOrdenadas.map(c => grupos[c].totalGanado);
 
       const coloresBarras = dataGanancias.map(valor => {
-        if (valor >= META_DIARIA) return '#85b88f'; // Verde si supera meta
-        if (valor >= PUNTO_EQUILIBRIO) return '#f1c36d'; // Dorado si cubre equilibrio
-        return '#d99076'; // Rojo si está por debajo de equilibrio
+        if (valor >= META_DIARIA) return '#85b88f';
+        if (valor >= PUNTO_EQUILIBRIO) return '#f1c36d';
+        return '#d99076';
       });
 
       if (miGraficoVentas) {
