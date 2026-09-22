@@ -59,6 +59,7 @@
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
+    .badge-gift { background: rgba(133, 184, 143, .25); border-color: #85b88f; color: #a3e6af; }
     .price { color: var(--gold-light); font-weight: 700; }
     .hidden { display: none !important; }
     .nav-tabs { display: flex; gap: 9px; margin: 0 0 16px; flex-wrap: wrap; }
@@ -173,6 +174,7 @@
             <div id="grpTamano" class="form-group hidden">
               <label>Tamaño de decant</label>
               <select id="itemTamano">
+                <option value="2ml">2ml</option>
                 <option value="3ml">3ml</option>
                 <option value="5ml">5ml</option>
                 <option value="10ml">10ml</option>
@@ -261,6 +263,7 @@
             <div id="grpTamanoVacios" class="form-group hidden">
               <label>Capacidad del envase vacío</label>
               <select id="stkTamanoVacios">
+                <option value="2ml">2ml</option>
                 <option value="3ml">3ml</option>
                 <option value="5ml">5ml</option>
                 <option value="10ml">10ml</option>
@@ -720,13 +723,66 @@
         cantidad: cantidad,
         precio_unitario: precioUnitario,
         subtotal: cantidad * precioUnitario,
-        imagen_url: perfumeObj.imagen_url
+        imagen_url: perfumeObj.imagen_url,
+        es_regalo: false
       };
 
       carritoVenta.push(item);
+
+      // OFRECER EL DECANT DE 2ML DE REGALO SI COMPRAN PERFUME SELLADO
+      if (tipoVenta === 'Perfume Sellado') {
+        const quiereRegalo = confirm(`🎁 ¡PROMOCIÓN DE REGALO!\n\n¿Deseas agregar un Decant de 2ml DE REGALO para esta compra de "${perfumeObj.nombre}"?`);
+        if (quiereRegalo) {
+          ofrecerRegaloDecant2ml();
+        }
+      }
+
       document.getElementById('itemPrecio').value = '';
       document.getElementById('itemCantidad').value = '1';
       renderizarCarrito();
+    }
+
+    function ofrecerRegaloDecant2ml() {
+      const perfumesAbiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0);
+      if (!perfumesAbiertos.length) {
+        alert('⚠️ No hay perfumes abiertos disponibles para preparar el decant de regalo.');
+        return;
+      }
+
+      const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === '2ml');
+      if (vacioRegalo && vacioRegalo.stock < 1) {
+        alert('⚠️ Nota: No quedan envases vacíos de 2ml registrados en el inventario para el regalo.');
+      }
+
+      let menuOpciones = "Selecciona el número del perfume que regalarlas en 2ml:\n\n";
+      perfumesAbiertos.forEach((p, idx) => {
+        menuOpciones += `${idx + 1}. ${p.nombre}\n`;
+      });
+
+      const eleccion = prompt(menuOpciones);
+      const num = parseInt(eleccion);
+
+      if (isNaN(num) || num < 1 || num > perfumesAbiertos.length) {
+        alert('Opción inválida. No se agregó el regalito.');
+        return;
+      }
+
+      const perfumeRegalo = perfumesAbiertos[num - 1];
+
+      const regaloItem = {
+        producto_id: perfumeRegalo.id,
+        nombre: `🎁 REGALO: Decant 2ml (${perfumeRegalo.nombre})`,
+        tipo: 'Decant',
+        tamano: '2ml',
+        cantidad: 1,
+        precio_unitario: 0.00,
+        subtotal: 0.00,
+        imagen_url: perfumeRegalo.imagen_url,
+        es_regalo: true
+      };
+
+      carritoVenta.push(regaloItem);
+      alert(`¡Decant de 2ml de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
     }
 
     function eliminarDelCarrito(index) {
@@ -750,12 +806,12 @@
             <div style="display:flex; align-items:center; gap:10px;">
               <img src="${item.imagen_url || IMG_DEFAULT}" style="width:36px; height:36px; object-fit:cover; border-radius:5px; border:1px solid var(--border);" onerror="this.src='${IMG_DEFAULT}'">
               <div>
-                <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge">${item.tipo} - ${item.tamano}</span><br>
+                <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge ${item.es_regalo ? 'badge-gift' : ''}">${item.es_regalo ? '🎁 GRATIS' : `${item.tipo} -${item.tamano}`}</span><br>
                 <span style="color:var(--muted); font-size:0.75rem;">Precio unitario: S/ ${item.precio_unitario.toFixed(2)}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <strong style="color:var(--gold-light);">S/ ${item.subtotal.toFixed(2)}</strong>
+              <strong style="color:${item.es_regalo ? '#a3e6af' : 'var(--gold-light)'};">S/ ${item.subtotal.toFixed(2)}</strong>
               <button type="button" onclick="eliminarDelCarrito(${idx})" class="btn-del">❌</button>
             </div>
           </div>
@@ -810,7 +866,7 @@
           }
         } else {
           const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
-          if (vacioObj) {
+          if (vacioObj && vacioObj.stock >= item.cantidad) {
             await client.from('productos').update({ stock: vacioObj.stock - item.cantidad }).eq('id', vacioObj.id);
           }
         }
