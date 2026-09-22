@@ -86,11 +86,11 @@
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
-    /* ESTILOS DEL HISTORIAL DE VENTAS POR DÍA */
+    /* ESTILOS DE CAJA Y DÍA DE VENTAS */
     .day-group { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(2,19,38,.3); }
     .day-header { width: 100%; margin: 0; padding: 14px 16px; background: linear-gradient(135deg, rgba(11,49,86,.9), rgba(6,38,71,.9)); border: none; border-radius: 0; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--ivory); }
     .day-header:hover { background: linear-gradient(135deg, rgba(13,58,99,1), rgba(11,49,86,1)); }
-    .day-header-title { font-size: 0.95rem; font-weight: bold; text-transform: capitalize; color: var(--gold-light); }
+    .day-header-title { font-size: 0.92rem; font-weight: bold; text-transform: capitalize; color: var(--gold-light); }
     .day-header-summary { font-size: 0.83rem; color: var(--ivory); }
     .day-content { padding: 10px 14px 14px; }
 
@@ -299,10 +299,10 @@
       <!-- TAB HISTORIAL -->
       <div id="tab-historial" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-          <h3 style="margin:0;">📊 Historial de ventas</h3>
+          <h3 style="margin:0;">📊 Historial por Cierre de Caja Diaria</h3>
           <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
         </div>
-        <div id="listaVentas">Cargando ventas...</div>
+        <div id="listaVentas">Cargando historial...</div>
       </div>
 
       <!-- TAB ASISTENCIA DE TRABAJADORES -->
@@ -844,7 +844,7 @@
       }
     });
 
-    // HISTORIAL DE VENTAS AGRUPADO POR FECHAS Y DÍAS
+    // HISTORIAL DE VENTAS CON CIERRE DE CAJA HASTA LAS 11:59 PM (POR FECHA LOCAL)
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
@@ -854,21 +854,27 @@
         return;
       }
 
-      // Agrupar ventas por fecha YYYY-MM-DD
       const grupos = {};
+      
       ventas.forEach((v, index) => {
         const fechaObj = new Date(v.fecha);
-        const claveFecha = fechaObj.toISOString().split('T')[0];
         
-        if (!grupos[claveFecha]) {
-          grupos[claveFecha] = {
+        // Obtener la fecha local exacta (Año, Mes, Día) evitando desfasamiento por UTC
+        const ano = fechaObj.getFullYear();
+        const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+        const dia = String(fechaObj.getDate()).padStart(2, '0');
+        const claveFechaLocal = `${ano}-${mes}-${dia}`;
+
+        if (!grupos[claveFechaLocal]) {
+          grupos[claveFechaLocal] = {
             fechaFormateada: fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
             ventas: [],
             totalGanado: 0
           };
         }
-        grupos[claveFecha].ventas.push({ venta: v, indexGlobal: index });
-        grupos[claveFecha].totalGanado += parseFloat(v.monto_total || 0);
+        
+        grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index });
+        grupos[claveFechaLocal].totalGanado += parseFloat(v.monto_total || 0);
       });
 
       const clavesOrdenadas = Object.keys(grupos).sort().reverse();
@@ -898,7 +904,7 @@
         return `
           <div class="day-group">
             <button type="button" class="day-header" onclick="toggleDiaHistorial('${clave}')">
-              <span class="day-header-title">📅 ${grupo.fechaFormateada}</span>
+              <span class="day-header-title">📋 Cierre de Caja: ${grupo.fechaFormateada}</span>
               <span class="day-header-summary">
                 <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong> | Ganancia: <strong style="color:var(--gold-light);">S/ ${totalSoles}</strong> <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
               </span>
