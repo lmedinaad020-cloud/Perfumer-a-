@@ -293,7 +293,7 @@
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label>Precio Base / Costo (S/)</label>
+                <label>Precio Base / Costo del Producto (S/)</label>
                 <input type="number" step="0.01" id="stkPrecio" value="0.00">
               </div>
               <div class="form-group">
@@ -763,6 +763,7 @@
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
 
+      // Cálculo del costo unitario usando el precio base registrado en el catálogo
       let costoUnitarioItem = parseFloat(perfumeObj.precio || 0);
 
       if (tipoVenta === 'Decant') {
@@ -932,6 +933,8 @@
         const metodoPago = document.getElementById('vtaMetodoPago').value;
         const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
         const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
+        
+        // Cálculo real de ganancia neta restando el costo base del producto/envase
         const gananciaNetaVenta = totalMonto - totalCosto;
 
         for (const item of carritoVenta) {
@@ -985,7 +988,7 @@
       }
     });
 
-    // HISTORIAL DE VENTAS CON RESTRICCIÓN DE VISIBILIDAD DE GANANCIA NETA
+    // HISTORIAL DE VENTAS Y CÁLCULO DE GANANCIA NETA
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
@@ -1017,10 +1020,19 @@
           };
         }
         
-        grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index });
+        // Obtener o calcular la ganancia neta restando el costo
+        let ganNeta = 0;
+        if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
+          ganNeta = parseFloat(v.ganancia_neta);
+        } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
+          const costoTotalDetalles = v.detalles.reduce((acc, item) => acc + (parseFloat(item.costo_total) || 0), 0);
+          ganNeta = parseFloat(v.monto_total || 0) - costoTotalDetalles;
+        } else {
+          ganNeta = parseFloat(v.monto_total || 0);
+        }
+
+        grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index, gananciaNetaCalculada: ganNeta });
         grupos[claveFechaLocal].totalGanado += parseFloat(v.monto_total || 0);
-        
-        const ganNeta = v.ganancia_neta !== undefined && v.ganancia_neta !== null ? parseFloat(v.ganancia_neta) : parseFloat(v.monto_total || 0);
         grupos[claveFechaLocal].gananciaNetaTotal += ganNeta;
       });
 
@@ -1038,7 +1050,7 @@
         const htmlVentas = grupo.ventas.map(item => {
           const v = item.venta;
           const idx = item.indexGlobal;
-          const gNeta = v.ganancia_neta !== undefined && v.ganancia_neta !== null ? parseFloat(v.ganancia_neta).toFixed(2) : parseFloat(v.monto_total || 0).toFixed(2);
+          const gNeta = item.gananciaNetaCalculada.toFixed(2);
           
           return `
             <div class="stock-item" style="margin-top:8px;">
@@ -1125,8 +1137,6 @@
 
       const clavesOrdenadas = Object.keys(grupos).sort();
       const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
-      
-      // Administradores ven Ganancia Neta en el gráfico, vendedores ven Venta Total
       const dataGanancias = clavesOrdenadas.map(c => esUsuarioAdmin ? grupos[c].gananciaNetaTotal : grupos[c].totalGanado);
 
       const coloresBarras = dataGanancias.map(valor => {
@@ -1248,7 +1258,16 @@
       ];
 
       listaVentasCache.forEach(v => {
-        const ganNeta = v.ganancia_neta !== undefined && v.ganancia_neta !== null ? parseFloat(v.ganancia_neta) : parseFloat(v.monto_total || 0);
+        let ganNeta = 0;
+        if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
+          ganNeta = parseFloat(v.ganancia_neta);
+        } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
+          const costoTotalDetalles = v.detalles.reduce((acc, item) => acc + (parseFloat(item.costo_total) || 0), 0);
+          ganNeta = parseFloat(v.monto_total || 0) - costoTotalDetalles;
+        } else {
+          ganNeta = parseFloat(v.monto_total || 0);
+        }
+
         datosExcel.push([
           v.id || '',
           new Date(v.fecha).toLocaleString(),
