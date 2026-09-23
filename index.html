@@ -1045,14 +1045,24 @@
     });
 
     async function cargarHistorial() {
+      // 1. Obtener todas las ventas
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
+      
       const contenedor = document.getElementById('listaVentas');
       
       if (!ventas || !ventas.length) {
         contenedor.innerHTML = '<p class="empty-msg">No hay ventas registradas aún.</p>';
         renderizarGraficoVentas({});
         return;
+      }
+
+      // 2. Asegurar tener el inventario fresco para consultar costos reales
+      let catalogo = listaProductos;
+      if (!catalogo || !catalogo.length) {
+        const { data: prods } = await client.from('productos').select('*');
+        catalogo = prods || [];
+        listaProductos = catalogo;
       }
 
       const esUsuarioAdmin = esAdmin();
@@ -1075,34 +1085,47 @@
           };
         }
         
-        // CALCULAR GANANCIA NETA REAL EN TIEMPO REAL
+        // CÁLCULO DE GANANCIA NETA EXACTA
         let ganNeta = 0;
-        let costoTotalCalculado = 0;
 
-        if (Array.isArray(v.detalles) && v.detalles.length > 0) {
+        // A) Si la venta ya tiene guardada una ganancia neta mayor a 0, usar ese valor
+        if (v.ganancia_neta !== undefined && v.ganancia_neta !== null && parseFloat(v.ganancia_neta) > 0) {
+          ganNeta = parseFloat(v.ganancia_neta);
+        } 
+        // B) Si no, calcular ítem por ítem descontando costo del líquido + costo del envase
+        else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
+          let costoTotalCalculado = 0;
+
           v.detalles.forEach(item => {
             let cUnit = parseFloat(item.costo_unitario || 0);
+            const cant = parseInt(item.cantidad) || 1;
             
-            // Si el costo del detalle es 0, buscar el precio en el catálogo local
-            if (cUnit === 0 && item.producto_id) {
-              const prod = listaProductos.find(p => p.id === item.producto_id);
-              if (prod) {
-                const precioBotella = parseFloat(prod.precio || 0);
+            // Si no venía grabado costo_unitario en el JSON o venía en 0, lo reconstruimos
+            if (cUnit === 0) {
+              const prodObj = catalogo.find(p => p.id === item.producto_id) || 
+                              catalogo.find(p => p.nombre.toLowerCase() === (item.nombre || '').toLowerCase());
+              
+              if (prodObj) {
+                const precioBotella100ml = parseFloat(prodObj.precio || 0);
+
                 if (item.tipo === 'Decant') {
                   const ml = parseInt(item.tamano) || 2;
-                  const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
-                  const costoVacio = vacioObj ? parseFloat(vacioObj.precio || 0) : 0;
-                  cUnit = ((precioBotella / 100) * ml) + costoVacio;
+                  const costoLiquido = (precioBotella100ml / 100) * ml;
+
+                  // Buscar envase vacío correspondiente
+                  const envaseObj = catalogo.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+                  const costoEnvase = envaseObj ? parseFloat(envaseObj.precio || 0) : 0;
+
+                  cUnit = costoLiquido + costoEnvase;
                 } else {
-                  cUnit = precioBotella;
+                  cUnit = precioBotella100ml;
                 }
               }
             }
-            costoTotalCalculado += cUnit * (parseInt(item.cantidad) || 1);
+            costoTotalCalculado += cUnit * cant;
           });
+
           ganNeta = parseFloat(v.monto_total || 0) - costoTotalCalculado;
-        } else if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
-          ganNeta = parseFloat(v.ganancia_neta);
         } else {
           ganNeta = parseFloat(v.monto_total || 0);
         }
