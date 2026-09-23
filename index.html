@@ -53,11 +53,13 @@
     input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,144,54,.16); }
     button { width: 100%; padding: 12px 14px; background: linear-gradient(135deg, #dba648, #ae7628); color: #fffaf0; border: 1px solid #efc66e; border-radius: 7px; font: 700 .87rem inherit; letter-spacing: .02em; cursor: pointer; margin-top: 8px; transition: transform .15s, filter .15s; }
     button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
     button.btn-sec { background: transparent; border-color: rgba(246,240,231,.3); color: var(--muted); }
     button.btn-add { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #5e986c, #3d7452); border-color: #8fc49a; font-size: .75rem; }
     button.btn-open { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #60a5fa; font-size: .75rem; color: #fff; }
     button.btn-empty { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
     button.btn-del { width: auto; margin: 0; padding: 4px 8px; background: #b85c5c; border: none; font-size: .7rem; border-radius: 4px; color: #fff; }
+    button.btn-undo { width: auto; margin: 0; padding: 5px 10px; background: linear-gradient(135deg, #d9534f, #c9302c); border-color: #d9534f; font-size: .72rem; color: #fff; border-radius: 5px; }
     button.btn-yape { background: linear-gradient(135deg, #8a2be2, #5c189a); border-color: #b15eff; color: #fff; }
     
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -72,7 +74,7 @@
     .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; min-width: 100px; }
     .nav-tabs button:hover { border-color: var(--gold); }
     
-    /* DISEÑO VISUAL MEJORADO DEL INVENTARIO */
+    /* INVENTARIO */
     .inv-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
     .inv-summary-card { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
     .inv-summary-card h5 { margin: 0; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -107,7 +109,6 @@
     .cart-item:last-child { border-bottom: none; }
     .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
 
-    /* ESTILOS DE CAJA Y DÍA DE VENTAS */
     .day-group { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(2,19,38,.3); }
     .day-header { width: 100%; margin: 0; padding: 14px 16px; background: linear-gradient(135deg, rgba(11,49,86,.9), rgba(6,38,71,.9)); border: none; border-radius: 0; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--ivory); }
     .day-header:hover { background: linear-gradient(135deg, rgba(13,58,99,1), rgba(11,49,86,1)); }
@@ -115,7 +116,6 @@
     .day-header-summary { font-size: 0.83rem; color: var(--ivory); }
     .day-content { padding: 10px 14px 14px; }
 
-    /* CONTENEDOR DEL GRÁFICO DE VENTAS */
     .chart-container { background: rgba(2,19,38,.7); border: 1px solid var(--gold); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
 
     .timer-card { text-align: center; background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
@@ -245,7 +245,6 @@
             </div>
           </div>
 
-          <!-- BOTÓN PARA MOSTRAR QR DE YAPE -->
           <div class="form-group" style="margin-top:10px;">
             <button type="button" onclick="abrirModalQRYape()" class="btn-yape" style="padding:10px; font-size:0.85rem;">📱 Ver QR de Yape para Cobro</button>
           </div>
@@ -258,11 +257,11 @@
             </div>
           </div>
 
-          <button type="submit" style="margin-top:12px; font-size:1rem; padding:14px;">✅ Procesar Venta Completa</button>
+          <button type="submit" id="btnSubmitVenta" style="margin-top:12px; font-size:1rem; padding:14px;">✅ Procesar Venta Completa</button>
         </form>
       </div>
 
-      <!-- TAB STOCK (NUEVO DISEÑO INTUITIVO) -->
+      <!-- TAB STOCK -->
       <div id="tab-stock" class="card hidden">
         <div id="secCrearProducto" class="hidden">
           <h3>➕ Crear Nuevo Producto / Envase</h3>
@@ -308,7 +307,6 @@
 
         <h3 style="margin-top:10px;">📦 Catálogo e Inventario</h3>
 
-        <!-- TARJETAS DE MÉTRICAS RÁPIDAS -->
         <div class="inv-summary-grid">
           <div class="inv-summary-card">
             <h5>Total Ítems</h5>
@@ -328,7 +326,6 @@
           <input type="text" id="inputBusqueda" placeholder="Buscar producto por nombre..." oninput="filtrarInventario()">
         </div>
 
-        <!-- FILTROS RÁPIDOS POR CATEGORÍA -->
         <div class="inv-filter-chips">
           <button class="chip-btn active" onclick="filtrarCategoriaChip('TODOS', this)">🌐 Todos</button>
           <button class="chip-btn" onclick="filtrarCategoriaChip('SELLADO', this)">🧴 Sellados</button>
@@ -336,7 +333,6 @@
           <button class="chip-btn" onclick="filtrarCategoriaChip('VACIO', this)">📦 Envases Vacíos</button>
         </div>
 
-        <!-- CUADRÍCULA VISUAL DE PRODUCTOS -->
         <div id="gridInventario" class="inv-grid">Cargando catálogo...</div>
       </div>
 
@@ -347,7 +343,6 @@
           <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
         </div>
 
-        <!-- GRÁFICO DE BARRAS DE VENTAS Y METAS -->
         <div class="chart-container">
           <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
           <canvas id="chartVentasDiarias" height="180"></canvas>
@@ -413,6 +408,7 @@
     let intervalTimer = null;
     let miGraficoVentas = null;
     let categoriaFiltroActual = 'TODOS';
+    let procesandoVenta = false;
 
     const PUNTO_EQUILIBRIO = 140;
     const META_DIARIA = 199;
@@ -500,7 +496,6 @@
     function renderizarStock() {
       const query = document.getElementById('inputBusqueda').value.toLowerCase().trim();
 
-      // Cálculo de métricas
       document.getElementById('metrTotal').innerText = listaProductos.length;
       document.getElementById('metrBajo').innerText = listaProductos.filter(p => p.stock > 0 && p.stock <= 4).length;
       document.getElementById('metrAgotado').innerText = listaProductos.filter(p => p.stock === 0).length;
@@ -909,57 +904,75 @@
       }
     });
 
+    // PROCESAR VENTA CON PROTECCIÓN DE DOBLE CLIC Y BLOQUEO DE BOTÓN
     document.getElementById('formVenta').addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      if (procesandoVenta) return;
       if (!carritoVenta.length) return alert('¡Agrega al menos un producto al carrito antes de procesar la venta!');
 
-      const canal = document.getElementById('vtaCanal').value;
-      const metodoPago = document.getElementById('vtaMetodoPago').value;
-      const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
+      const btnSubmit = document.getElementById('btnSubmitVenta');
+      
+      try {
+        procesandoVenta = true;
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = '⏳ Procesando Venta...';
 
-      for (const item of carritoVenta) {
-        if (item.tipo === 'Perfume Sellado') {
-          const perf = listaProductos.find(p => p.id === item.producto_id);
-          if (perf) {
-            await client.from('productos').update({ stock: perf.stock - item.cantidad }).eq('id', perf.id);
-          }
-        } else {
-          const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
-          if (vacioObj && vacioObj.stock >= item.cantidad) {
-            await client.from('productos').update({ stock: vacioObj.stock - item.cantidad }).eq('id', vacioObj.id);
+        const canal = document.getElementById('vtaCanal').value;
+        const metodoPago = document.getElementById('vtaMetodoPago').value;
+        const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
+
+        for (const item of carritoVenta) {
+          if (item.tipo === 'Perfume Sellado') {
+            const perf = listaProductos.find(p => p.id === item.producto_id);
+            if (perf) {
+              await client.from('productos').update({ stock: Math.max(0, perf.stock - item.cantidad) }).eq('id', perf.id);
+            }
+          } else {
+            const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+            if (vacioObj && vacioObj.stock >= item.cantidad) {
+              await client.from('productos').update({ stock: Math.max(0, vacioObj.stock - item.cantidad) }).eq('id', vacioObj.id);
+            }
           }
         }
-      }
 
-      const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
-      const primerTipo = carritoVenta[0] ? carritoVenta[0].tipo : 'Venta Mixta';
+        const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
+        const primerTipo = carritoVenta[0] ? carritoVenta[0].tipo : 'Venta Mixta';
 
-      const venta = {
-        producto_nombre: resumenNombres,
-        tipo_venta: primerTipo,
-        monto_total: totalMonto,
-        vendedor_email: usuarioActual.email,
-        ubicacion_venta: `${canal} (${metodoPago})`,
-        detalles: carritoVenta,
-        comprobante_url: comprobanteBase64 || null
-      };
+        const venta = {
+          producto_nombre: resumenNombres,
+          tipo_venta: primerTipo,
+          monto_total: totalMonto,
+          vendedor_email: usuarioActual.email,
+          ubicacion_venta: `${canal} (${metodoPago})`,
+          detalles: carritoVenta,
+          comprobante_url: comprobanteBase64 || null
+        };
 
-      const { error } = await client.from('ventas').insert([venta]);
-      if (error) alert('Error al registrar la venta: ' + error.message);
-      else {
-        alert('¡Venta realizada con éxito!');
-        carritoVenta = [];
-        comprobanteBase64 = null;
-        document.getElementById('vtaFotoComprobante').value = '';
-        document.getElementById('previewComprobanteContainer').classList.add('hidden');
-        renderizarCarrito();
-        document.getElementById('itemBuscador').value = '';
-        actualizarOpcionesVenta();
-        cargarTodo();
+        const { error } = await client.from('ventas').insert([venta]);
+        if (error) {
+          alert('Error al registrar la venta: ' + error.message);
+        } else {
+          alert('¡Venta realizada con éxito!');
+          carritoVenta = [];
+          comprobanteBase64 = null;
+          document.getElementById('vtaFotoComprobante').value = '';
+          document.getElementById('previewComprobanteContainer').classList.add('hidden');
+          renderizarCarrito();
+          document.getElementById('itemBuscador').value = '';
+          actualizarOpcionesVenta();
+          cargarTodo();
+        }
+      } catch (err) {
+        alert('Ocurrió un error inesperado al procesar la venta: ' + err.message);
+      } finally {
+        procesandoVenta = false;
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = '✅ Procesar Venta Completa';
       }
     });
 
-    // HISTORIAL DE VENTAS CON GRÁFICO DE BARRAS, METAS Y CIERRE DE CAJA
+    // HISTORIAL DE VENTAS Y BOTÓN DESHACER (SOLO ADMINS)
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
@@ -1013,7 +1026,10 @@
                 <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
                 <p class="price" style="margin:0;font-size:.83rem;">Total: S/ ${v.monto_total.toFixed(2)}</p>
                 <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
-                ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="margin-top:8px; padding:4px 10px; font-size:0.75rem;">📸 Ver Captura/Comprobante</button>` : ''}
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                  ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="padding:4px 10px; font-size:0.75rem; width:auto; margin:0;">📸 Ver Captura</button>` : ''}
+                  ${esAdmin() ? `<button type="button" onclick="deshacerVenta(${v.id})" class="btn-undo">↩️ Deshacer Venta</button>` : ''}
+                </div>
               </div>
             </div>
           `;
@@ -1035,7 +1051,43 @@
       }).join('');
     }
 
-    // GENERAR EL GRÁFICO BARRAS DIARIAS CON LÍNEAS DE REFERENCIA (METAS)
+    // FUNCIÓN PARA DESHACER LA VENTA Y DEVOLVER STOCK (SOLO ADMIN)
+    async function deshacerVenta(idVenta) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden deshacer o anular ventas.');
+
+      const ventaObj = listaVentasCache.find(v => v.id === idVenta);
+      if (!ventaObj) return alert('No se encontró el registro de la venta.');
+
+      const confirmar = confirm(`⚠️ ¿Confirmas que deseas DESHACER y ANULAR la venta #${idVenta}?\n\n- Se eliminará del historial.\n- Se devolverá automáticamente el stock a los productos/envases correspondientes.`);
+      if (!confirmar) return;
+
+      // Restablecer stock si existen detalles
+      if (Array.isArray(ventaObj.detalles)) {
+        for (const item of ventaObj.detalles) {
+          if (item.tipo === 'Perfume Sellado') {
+            const perf = listaProductos.find(p => p.id === item.producto_id);
+            if (perf) {
+              await client.from('productos').update({ stock: perf.stock + item.cantidad }).eq('id', perf.id);
+            }
+          } else {
+            const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+            if (vacioObj) {
+              await client.from('productos').update({ stock: vacioObj.stock + item.cantidad }).eq('id', vacioObj.id);
+            }
+          }
+        }
+      }
+
+      const { error } = await client.from('ventas').delete().eq('id', idVenta);
+      if (error) {
+        alert('Error al deshacer la venta: ' + error.message);
+      } else {
+        alert('¡Venta anulada correctamente! El stock fue devuelto al inventario.');
+        cargarTodo();
+      }
+    }
+
+    // GRÁFICO DE BARRAS
     function renderizarGraficoVentas(grupos) {
       const ctx = document.getElementById('chartVentasDiarias');
       if (!ctx) return;
@@ -1153,7 +1205,6 @@
       document.getElementById('modalImgComprobante').src = '';
     }
 
-    // EXPORTACIÓN A EXCEL PROTEGIDA
     function exportarExcel() {
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el archivo de ventas.');
       if (!listaVentasCache || !listaVentasCache.length) return alert('No hay ventas registradas para exportar.');
@@ -1193,7 +1244,6 @@
       XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${fechaHoy}.xlsx`);
     }
 
-    // LÓGICA DE CONTROL DE ASISTENCIA Y CRONÓMETRO DE TRABAJO
     async function cargarEstadoAsistencia() {
       if (!usuarioActual) return;
 
