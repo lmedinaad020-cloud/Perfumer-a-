@@ -1048,6 +1048,7 @@
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
       const contenedor = document.getElementById('listaVentas');
+      
       if (!ventas || !ventas.length) {
         contenedor.innerHTML = '<p class="empty-msg">No hay ventas registradas aún.</p>';
         renderizarGraficoVentas({});
@@ -1059,7 +1060,6 @@
       
       ventas.forEach((v, index) => {
         const fechaObj = new Date(v.fecha);
-        
         const ano = fechaObj.getFullYear();
         const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
         const dia = String(fechaObj.getDate()).padStart(2, '0');
@@ -1075,20 +1075,34 @@
           };
         }
         
+        // CALCULAR GANANCIA NETA REAL EN TIEMPO REAL
         let ganNeta = 0;
-        if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
-          ganNeta = parseFloat(v.ganancia_neta);
-        } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
-          let costoTotalDetalles = 0;
+        let costoTotalCalculado = 0;
+
+        if (Array.isArray(v.detalles) && v.detalles.length > 0) {
           v.detalles.forEach(item => {
             let cUnit = parseFloat(item.costo_unitario || 0);
+            
+            // Si el costo del detalle es 0, buscar el precio en el catálogo local
             if (cUnit === 0 && item.producto_id) {
               const prod = listaProductos.find(p => p.id === item.producto_id);
-              if (prod) cUnit = parseFloat(prod.precio || 0);
+              if (prod) {
+                const precioBotella = parseFloat(prod.precio || 0);
+                if (item.tipo === 'Decant') {
+                  const ml = parseInt(item.tamano) || 2;
+                  const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+                  const costoVacio = vacioObj ? parseFloat(vacioObj.precio || 0) : 0;
+                  cUnit = ((precioBotella / 100) * ml) + costoVacio;
+                } else {
+                  cUnit = precioBotella;
+                }
+              }
             }
-            costoTotalDetalles += cUnit * (parseInt(item.cantidad) || 1);
+            costoTotalCalculado += cUnit * (parseInt(item.cantidad) || 1);
           });
-          ganNeta = parseFloat(v.monto_total || 0) - costoTotalDetalles;
+          ganNeta = parseFloat(v.monto_total || 0) - costoTotalCalculado;
+        } else if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
+          ganNeta = parseFloat(v.ganancia_neta);
         } else {
           ganNeta = parseFloat(v.monto_total || 0);
         }
@@ -1115,12 +1129,12 @@
           const gNeta = item.gananciaNetaCalculada.toFixed(2);
           
           return `
-            <div class="stock-item" style="margin-top:8px;">
+            <div class="stock-item" style="margin-top:8px; padding:10px; background:rgba(2,19,38,.5); border-radius:8px; border:1px solid var(--border);">
               <div>
-                <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleTimeString()}</p>
-                <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
+                <p style="margin:0;font-size:.72rem; color:var(--muted);">${new Date(v.fecha).toLocaleTimeString()}</p>
+                <h4 style="margin:5px 0; color:var(--ivory);">${v.producto_nombre}</h4>
                 <p class="price" style="margin:0;font-size:.83rem;">
-                  Total Venta: S/ ${v.monto_total.toFixed(2)}
+                  Total Venta: S/ ${parseFloat(v.monto_total).toFixed(2)}
                   ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: S/ ${gNeta}</span>` : ''}
                 </p>
                 <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
