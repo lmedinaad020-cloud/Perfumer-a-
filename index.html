@@ -268,8 +268,8 @@
             <div class="form-group">
               <label>Tipo de registro</label>
               <select id="stkTipo" onchange="toggleCamposStock()">
-                <option value="Perfume Sellado">Perfume Sellado (100ml)</option>
-                <option value="Perfume para Decant">Perfume Abierto p/ Decants (100ml)</option>
+                <option value="Perfume Sellado">Perfume Sellado (Botella Entera)</option>
+                <option value="Perfume para Decant">Perfume Abierto p/ Decants</option>
                 <option value="Decant Vacío">Envase Decant Vacío (Lote)</option>
               </select>
             </div>
@@ -281,6 +281,18 @@
               <label>URL de Imagen (Opcional)</label>
               <input type="url" id="stkImagen" placeholder="https://ejemplo.com/imagen.jpg">
             </div>
+
+            <!-- TAMAÑO DE BOTELLA ENTERA O ENVASE -->
+            <div id="grpTamanoBotella" class="form-group">
+              <label id="lblTamanoBotella">Capacidad de la Botella</label>
+              <select id="stkTamanoBotella">
+                <option value="100ml">100ml</option>
+                <option value="120ml">120ml</option>
+                <option value="125ml">125ml</option>
+                <option value="200ml">200ml</option>
+              </select>
+            </div>
+
             <div id="grpTamanoVacios" class="form-group hidden">
               <label>Capacidad del envase vacío</label>
               <select id="stkTamanoVacios">
@@ -290,6 +302,7 @@
                 <option value="10ml">10ml</option>
               </select>
             </div>
+
             <div class="grid-2">
               <div class="form-group">
                 <label id="lblPrecioStock">Costo Total Comprado (S/)</label>
@@ -479,7 +492,10 @@
     function toggleCamposStock() {
       const stkTipoVal = document.getElementById('stkTipo').value;
       const esVacio = stkTipoVal === 'Decant Vacío';
+      
       document.getElementById('grpTamanoVacios').classList.toggle('hidden', !esVacio);
+      document.getElementById('grpTamanoBotella').classList.toggle('hidden', esVacio);
+      
       document.getElementById('lblPrecioStock').innerText = esVacio ? 'Costo Total del Lote (S/)' : 'Costo Total del Producto (S/)';
       document.getElementById('lblCantidadStock').innerText = esVacio ? 'Cantidad de envases en el Lote' : 'Cantidad inicial de frascos';
     }
@@ -531,9 +547,12 @@
           barColor = 'var(--warning)';
         }
 
-        let labelTipo = 'SELLADO (100ml)';
-        if (p.tipo === 'Perfume para Decant') labelTipo = 'ABIERTO (100ml)';
-        else if (p.tipo === 'Decant Vacío') labelTipo = `ENVASE ${p.tamano ? `(${p.tamano})` : ''}`;
+        const tamanoPerfume = p.tamano || '100ml';
+        const mlBase = parseInt(tamanoPerfume) || 100;
+
+        let labelTipo = `SELLADO (${tamanoPerfume})`;
+        if (p.tipo === 'Perfume para Decant') labelTipo = `ABIERTO (${tamanoPerfume})`;
+        else if (p.tipo === 'Decant Vacío') labelTipo = `ENVASE (${p.tamano ? p.tamano : ''})`;
 
         const costoBaseVal = parseFloat(p.precio || 0);
 
@@ -550,7 +569,7 @@
                   <div class="product-card-meta">
                     ${p.tipo === 'Decant Vacío' ? 
                       `Costo Unit/Envase: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong>` : 
-                      `Costo Botella 100ml: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong> <br><span style="font-size:0.7rem; color:var(--muted);">(Costo/ml: S/ ${(costoBaseVal/100).toFixed(2)})</span>`
+                      `Costo Botella ${tamanoPerfume}: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong> <br><span style="font-size:0.7rem; color:var(--muted);">(Costo/ml: S/ ${(costoBaseVal/mlBase).toFixed(2)})</span>`
                     }
                   </div>` : ''}
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -653,7 +672,7 @@
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
 
-      const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${perfumeSelladoObj.nombre}"?\n\n- Se descontará 1 unidad de Perfumes Sellados.\n- Se sumará 1 unidad a "Perfume para Decant".`);
+      const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${perfumeSelladoObj.nombre}" (${perfumeSelladoObj.tamano || '100ml'})?\n\n- Se descontará 1 unidad de Perfumes Sellados.\n- Se sumará 1 unidad a "Perfume para Decant".`);
       if (!confirmar) return;
 
       const nuevoStockSellado = perfumeSelladoObj.stock - 1;
@@ -668,7 +687,7 @@
         await client.from('productos').insert([{
           nombre: perfumeSelladoObj.nombre,
           tipo: 'Perfume para Decant',
-          tamano: null,
+          tamano: perfumeSelladoObj.tamano || '100ml',
           precio: perfumeSelladoObj.precio,
           stock: 1,
           imagen_url: perfumeSelladoObj.imagen_url
@@ -714,7 +733,7 @@
       if (filtrados.length === 0) {
         selectPerfume.innerHTML = `<option value="">-- Sin resultados disponibles --</option>`;
       } else {
-        selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} (Stock: ${p.stock})</option>`).join('');
+        selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} [${p.tamano || '100ml'}] (Stock: ${p.stock})</option>`).join('');
       }
 
       mostrarPreviewPerfumeVenta();
@@ -731,7 +750,7 @@
 
       const perfume = listaProductos.find(p => p.id == perfumeId);
       if (perfume) {
-        document.getElementById('prevNombre').innerText = perfume.nombre;
+        document.getElementById('prevNombre').innerText = `${perfume.nombre} (${perfume.tamano || '100ml'})`;
         document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades`;
         document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
         cardPreview.classList.remove('hidden');
@@ -809,23 +828,22 @@
       if (tipoVenta === 'Perfume Sellado') {
         costoUnitarioFinal = parseFloat(perfumeObj.precio || 0);
       } else {
-        // CÁLCULO DE COSTO DE DECANT
-        const precioBase = parseFloat(perfumeObj.precio || 0);
-        const ml = parseInt(tamanoDecant) || 2;
+        // CÁLCULO PROPORCIONAL DE DECANT SEGÚN TAMAÑO DE BOTELLA
+        const precioBotella = parseFloat(perfumeObj.precio || 0);
+        const mlBotellaBase = parseInt(perfumeObj.tamano) || 100; // 100ml, 120ml, 125ml o 200ml
+        const costoPorMl = precioBotella / mlBotellaBase;
+        const mlVendido = parseInt(tamanoDecant) || 2;
         
-        // Si la botella es de 100ml, calculamos el costo del líquido por ml
-        const costoLiquido = (precioBase / 100) * ml;
+        const costoLiquido = costoPorMl * mlVendido;
 
-        // Buscar envase vacío
         const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
         const costoEnvaseVacio = vacioObj ? parseFloat(vacioObj.precio || 0) : 0;
 
         costoUnitarioFinal = costoLiquido + costoEnvaseVacio;
 
-        // Control de seguridad: Si por alguna razón el costo calculado supera al precio cobrado,
-        // o si el costo da excesivo, limitar el costo máximo razonable
+        // Control de seguridad: Si el costo da superior o igual al precio cobrado, ajusta a 50%
         if (costoUnitarioFinal >= precioVentaCobrado) {
-          costoUnitarioFinal = precioVentaCobrado * 0.50; // Asume un costo estimado del 50%
+          costoUnitarioFinal = precioVentaCobrado * 0.50;
         }
       }
 
@@ -833,7 +851,7 @@
         producto_id: perfumeObj.id,
         nombre: perfumeObj.nombre,
         tipo: tipoVenta,
-        tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
+        tamano: tipoVenta === 'Decant' ? tamanoDecant : (perfumeObj.tamano || 'Frasco Entero'),
         cantidad: cantidad,
         precio_unitario: precioVentaCobrado,
         costo_unitario: costoUnitarioFinal,
@@ -875,7 +893,7 @@
 
       let menuOpciones = "Selecciona el número del perfume que regalarás en 2ml:\n\n";
       perfumesAbiertos.forEach((p, idx) => {
-        menuOpciones += `${idx + 1}. ${p.nombre}\n`;
+        menuOpciones += `${idx + 1}. ${p.nombre} (${p.tamano || '100ml'})\n`;
       });
 
       const eleccion = prompt(menuOpciones);
@@ -887,7 +905,8 @@
       }
 
       const perfumeRegalo = perfumesAbiertos[num - 1];
-      const costoLiquido2ml = (parseFloat(perfumeRegalo.precio || 0) / 100) * 2;
+      const mlBase = parseInt(perfumeRegalo.tamano) || 100;
+      const costoLiquido2ml = (parseFloat(perfumeRegalo.precio || 0) / mlBase) * 2;
       const costoRegaloTotal = costoLiquido2ml + costoVacio;
 
       const regaloItem = {
@@ -954,6 +973,13 @@
       const cantidadReg = parseInt(document.getElementById('stkCantidad').value) || 1;
       const precioMontoInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
 
+      let tamanoValor = null;
+      if (tipo === 'Decant Vacío') {
+        tamanoValor = document.getElementById('stkTamanoVacios').value;
+      } else {
+        tamanoValor = document.getElementById('stkTamanoBotella').value; // 100ml, 120ml, 125ml, 200ml
+      }
+
       let costoUnitarioCalculado = precioMontoInput;
       if (tipo === 'Decant Vacío' && cantidadReg > 0) {
         costoUnitarioCalculado = precioMontoInput / cantidadReg;
@@ -962,7 +988,7 @@
       const nuevo = {
         nombre: nombreInput,
         tipo: tipo,
-        tamano: tipo === 'Decant Vacío' ? document.getElementById('stkTamanoVacios').value : null,
+        tamano: tamanoValor,
         precio: costoUnitarioCalculado,
         stock: cantidadReg,
         imagen_url: imagenInput || null
@@ -1091,7 +1117,6 @@
         let ganNeta = 0;
         const montoVenta = parseFloat(v.monto_total || 0);
 
-        // Si el valor guardado en BD es positivo, usarlo; si es negativo o cero, recalcular
         if (v.ganancia_neta !== undefined && v.ganancia_neta !== null && parseFloat(v.ganancia_neta) > 0) {
           ganNeta = parseFloat(v.ganancia_neta);
         } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
@@ -1107,21 +1132,21 @@
                               catalogo.find(p => p.nombre.toLowerCase() === (item.nombre || '').toLowerCase());
               
               if (prodObj) {
-                const precioBotella100ml = parseFloat(prodObj.precio || 0);
+                const precioBotella = parseFloat(prodObj.precio || 0);
+                const mlBotellaBase = parseInt(prodObj.tamano) || 100;
 
                 if (item.tipo === 'Decant') {
-                  const ml = parseInt(item.tamano) || 2;
-                  const costoLiquido = (precioBotella100ml / 100) * ml;
+                  const mlVendido = parseInt(item.tamano) || 2;
+                  const costoLiquido = (precioBotella / mlBotellaBase) * mlVendido;
                   const envaseObj = catalogo.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
                   const costoEnvase = envaseObj ? parseFloat(envaseObj.precio || 0) : 0;
 
                   cUnit = costoLiquido + costoEnvase;
                 } else {
-                  cUnit = precioBotella100ml;
+                  cUnit = precioBotella;
                 }
               }
 
-              // Si aun así el costo unitario da mayor o igual al precio cobrado, ajustar a un margen lógico
               if (cUnit >= pUnit && pUnit > 0) {
                 cUnit = pUnit * 0.50;
               }
@@ -1131,7 +1156,7 @@
 
           ganNeta = montoVenta - costoTotalCalculado;
           if (ganNeta < 0) {
-            ganNeta = montoVenta * 0.50; // Margen de respaldo si la resta da negativa
+            ganNeta = montoVenta * 0.50;
           }
         } else {
           ganNeta = montoVenta * 0.50;
