@@ -74,7 +74,6 @@
     .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; min-width: 100px; }
     .nav-tabs button:hover { border-color: var(--gold); }
     
-    /* INVENTARIO */
     .inv-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
     .inv-summary-card { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
     .inv-summary-card h5 { margin: 0; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -156,7 +155,7 @@
         <button onclick="mostrarTab('asistencia')">⏱️ Asistencia</button>
       </nav>
 
-      <!-- TAB VENTA MULTI-PRODUCTO -->
+      <!-- TAB VENTA -->
       <div id="tab-venta" class="card">
         <h3>🛒 Registrar Nueva Venta</h3>
         
@@ -351,7 +350,7 @@
         <div id="listaVentas">Cargando historial...</div>
       </div>
 
-      <!-- TAB ASISTENCIA DE TRABAJADORES -->
+      <!-- TAB ASISTENCIA -->
       <div id="tab-asistencia" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
           <h3 style="margin:0;">⏱️ Control de Asistencia</h3>
@@ -371,7 +370,7 @@
       </div>
     </section>
 
-    <!-- MODAL VISOR DE COMPROBANTE DE PAGO -->
+    <!-- MODAL COMPROBANTE -->
     <div id="modalComprobante" class="modal-overlay hidden">
       <div class="modal-content">
         <h4 style="margin:0 0 12px; color:var(--gold-light);">📸 Comprobante de Pago</h4>
@@ -380,7 +379,7 @@
       </div>
     </div>
 
-    <!-- MODAL VISOR DE CÓDIGO QR YAPE -->
+    <!-- MODAL QR YAPE -->
     <div id="modalQRYape" class="modal-overlay hidden">
       <div class="modal-content" style="border-color:#b15eff;">
         <h4 style="margin:0 0 8px; color:#f1c36d;">📱 Escanea para Yapear</h4>
@@ -763,6 +762,7 @@
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
 
+      // Costo base del producto consultado directamente del catálogo
       let costoUnitarioItem = parseFloat(perfumeObj.precio || 0);
 
       if (tipoVenta === 'Decant') {
@@ -933,6 +933,7 @@
         const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
         const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
         
+        // CÁLCULO REAL DE GANANCIA NETA
         const gananciaNetaVenta = totalMonto - totalCosto;
 
         for (const item of carritoVenta) {
@@ -1017,6 +1018,7 @@
           };
         }
         
+        // Evaluar ganancia neta o calcular en vivo si viene vacía
         let ganNeta = 0;
         if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
           ganNeta = parseFloat(v.ganancia_neta);
