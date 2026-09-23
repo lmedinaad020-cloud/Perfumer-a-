@@ -763,7 +763,6 @@
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
 
-      // Cálculo del costo unitario usando el precio base registrado en el catálogo
       let costoUnitarioItem = parseFloat(perfumeObj.precio || 0);
 
       if (tipoVenta === 'Decant') {
@@ -934,7 +933,6 @@
         const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
         const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
         
-        // Cálculo real de ganancia neta restando el costo base del producto/envase
         const gananciaNetaVenta = totalMonto - totalCosto;
 
         for (const item of carritoVenta) {
@@ -988,7 +986,6 @@
       }
     });
 
-    // HISTORIAL DE VENTAS Y CÁLCULO DE GANANCIA NETA
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
@@ -1020,7 +1017,6 @@
           };
         }
         
-        // Obtener o calcular la ganancia neta restando el costo
         let ganNeta = 0;
         if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
           ganNeta = parseFloat(v.ganancia_neta);
