@@ -100,7 +100,7 @@
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
     .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
 
-    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 9px; margin-bottom: 14px; }
+    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 99px; margin-bottom: 14px; }
     .preview-card img { width: 52px; height: 52px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
 
     .cart-box { background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; margin-top: 18px; }
@@ -263,23 +263,23 @@
       <!-- TAB STOCK -->
       <div id="tab-stock" class="card hidden">
         <div id="secCrearProducto" class="hidden">
-          <h3>➕ Crear Nuevo Producto / Envase</h3>
+          <h3>➕ Crear Nuevo Producto / Lote de Decants</h3>
           <form id="formStock">
             <div class="form-group">
               <label>Tipo de registro</label>
               <select id="stkTipo" onchange="toggleCamposStock()">
-                <option value="Perfume Sellado">Perfume Sellado</option>
-                <option value="Perfume para Decant">Perfume Abierto (Para Decants)</option>
-                <option value="Decant Vacío">Envase Decant Vacío</option>
+                <option value="Perfume Sellado">Perfume Sellado (100ml)</option>
+                <option value="Perfume para Decant">Perfume Abierto p/ Decants (100ml)</option>
+                <option value="Decant Vacío">Envase Decant Vacío (Lote)</option>
               </select>
             </div>
             <div class="form-group">
-              <label>Nombre / descripción</label>
-              <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Atomizador" required>
+              <label>Nombre / Descripción</label>
+              <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Spray Atomizador" required>
             </div>
             <div class="form-group">
-              <label>URL de Imagen del Perfume (Opcional)</label>
-              <input type="url" id="stkImagen" placeholder="https://ejemplo.com/perfume.jpg">
+              <label>URL de Imagen (Opcional)</label>
+              <input type="url" id="stkImagen" placeholder="https://ejemplo.com/imagen.jpg">
             </div>
             <div id="grpTamanoVacios" class="form-group hidden">
               <label>Capacidad del envase vacío</label>
@@ -292,15 +292,15 @@
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label>Precio Base / Costo del Producto (S/)</label>
-                <input type="number" step="0.01" id="stkPrecio" value="0.00">
+                <label id="lblPrecioStock">Costo Total Comprado (S/)</label>
+                <input type="number" step="0.01" id="stkPrecio" placeholder="Ej: 75.00" value="0.00">
               </div>
               <div class="form-group">
-                <label>Cantidad inicial</label>
-                <input type="number" id="stkCantidad" value="1" required>
+                <label id="lblCantidadStock">Cantidad de unidades en el Lote</label>
+                <input type="number" id="stkCantidad" placeholder="Ej: 112" value="1" required>
               </div>
             </div>
-            <button type="submit">Guardar nuevo en inventario</button>
+            <button type="submit">Guardar en Inventario</button>
           </form>
         </div>
 
@@ -478,7 +478,10 @@
 
     function toggleCamposStock() {
       const stkTipoVal = document.getElementById('stkTipo').value;
-      document.getElementById('grpTamanoVacios').classList.toggle('hidden', stkTipoVal !== 'Decant Vacío');
+      const esVacio = stkTipoVal === 'Decant Vacío';
+      document.getElementById('grpTamanoVacios').classList.toggle('hidden', !esVacio);
+      document.getElementById('lblPrecioStock').innerText = esVacio ? 'Costo Total del Lote (S/)' : 'Costo Total del Producto (S/)';
+      document.getElementById('lblCantidadStock').innerText = esVacio ? 'Cantidad de envases en el Lote' : 'Cantidad inicial de frascos';
     }
 
     function filtrarInventario() {
@@ -528,9 +531,11 @@
           barColor = 'var(--warning)';
         }
 
-        let labelTipo = 'SELLADO';
-        if (p.tipo === 'Perfume para Decant') labelTipo = 'ABIERTO';
+        let labelTipo = 'SELLADO (100ml)';
+        if (p.tipo === 'Perfume para Decant') labelTipo = 'ABIERTO (100ml)';
         else if (p.tipo === 'Decant Vacío') labelTipo = `ENVASE ${p.tamano ? `(${p.tamano})` : ''}`;
+
+        const costoBaseVal = parseFloat(p.precio || 0);
 
         return `
           <div class="product-card">
@@ -541,7 +546,13 @@
             <div class="product-card-body">
               <div>
                 <h4 class="product-card-title">${p.nombre}</h4>
-                ${esAdmin() ? `<div class="product-card-meta">Costo Base: <strong style="color:var(--gold-light);">S/ ${parseFloat(p.precio || 0).toFixed(2)}</strong></div>` : ''}
+                ${esAdmin() ? `
+                  <div class="product-card-meta">
+                    ${p.tipo === 'Decant Vacío' ? 
+                      `Costo Unit/Envase: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong>` : 
+                      `Costo Botella 100ml: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong> <br><span style="font-size:0.7rem; color:var(--muted);">(Costo/ml: S/ ${(costoBaseVal/100).toFixed(2)})</span>`
+                    }
+                  </div>` : ''}
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <span class="badge ${badgeClass}">${badgeText}</span>
                   <span style="font-size:0.75rem; color:var(--muted);">${p.stock} unids.</span>
@@ -553,7 +564,7 @@
 
               ${esAdmin() ? `
                 <div class="product-card-actions">
-                  <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar Stock</button>
+                  <button onclick="sumarStockOLote(${p.id})" class="btn-add">➕ Ingresar Nuevo Lote / Stock</button>
                   ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
                   ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
                 </div>
@@ -562,6 +573,78 @@
           </div>
         `;
       }).join('');
+    }
+
+    async function sumarStockOLote(id) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden gestionar el inventario.');
+
+      const producto = listaProductos.find(p => p.id === id);
+      if (!producto) return;
+
+      if (producto.tipo === 'Decant Vacío') {
+        const cantStr = prompt(`📦 INGRESAR NUEVO LOTE DE DECANTS (${producto.nombre} ${producto.tamano || ''})\n\n¿Cuántos envases vienen en el nuevo lote que compraste? (Ej: 112):`);
+        if (!cantStr || isNaN(cantStr) || parseInt(cantStr) <= 0) return;
+        const cantLote = parseInt(cantStr);
+
+        const precioLoteStr = prompt(`💰 Precio TOTAL pagado por ese lote de ${cantLote} envases (S/): (Ej: 75.00)`);
+        if (!precioLoteStr || isNaN(precioLoteStr) || parseFloat(precioLoteStr) < 0) return;
+        const precioLote = parseFloat(precioLoteStr);
+
+        const nuevoCostoUnitario = cantLote > 0 ? (precioLote / cantLote) : parseFloat(producto.precio || 0);
+        const nuevoStockTotal = producto.stock + cantLote;
+
+        const { error } = await client.from('productos').update({
+          stock: nuevoStockTotal,
+          precio: nuevoCostoUnitario
+        }).eq('id', id);
+
+        if (error) alert('Error al actualizar lote: ' + error.message);
+        else {
+          alert(`¡Lote agregado con éxito!\n- Envases agregados: ${cantLote}\n- Nuevo Stock Total: ${nuevoStockTotal}\n- Nuevo Costo Unitario por Envase: S/ ${nuevoCostoUnitario.toFixed(2)}`);
+          cargarTodo();
+        }
+        return;
+      }
+
+      if (producto.tipo === 'Perfume para Decant') {
+        const perfumeSellado = listaProductos.find(p => p.tipo === 'Perfume Sellado' && p.nombre.toLowerCase() === producto.nombre.toLowerCase());
+
+        if (perfumeSellado) {
+          const cantidadStr = prompt(`¿Cuántas botellas selladas de "${perfumeSellado.nombre}" vas a ABRIR para decants?\n\nStock sellado disponible: ${perfumeSellado.stock}`);
+          if (!cantidadStr || isNaN(cantidadStr) || parseInt(cantidadStr) <= 0) return;
+
+          const cant = parseInt(cantidadStr);
+          if (perfumeSellado.stock < cant) return alert(`¡No hay suficiente stock sellado! Solo tienes ${perfumeSellado.stock} unidades.`);
+
+          const { error: errSellado } = await client.from('productos').update({ stock: perfumeSellado.stock - cant }).eq('id', perfumeSellado.id);
+          if (errSellado) return alert('Error al descontar stock sellado: ' + errSellado.message);
+
+          const { error: errAbierto } = await client.from('productos').update({ stock: producto.stock + cant }).eq('id', id);
+          if (errAbierto) return alert('Error al sumar stock para decants: ' + errAbierto.message);
+
+          alert(`¡Se abrieron ${cant} botella(s) de "${producto.nombre}"!`);
+          cargarTodo();
+          return;
+        }
+      }
+
+      const cantidadStr = prompt(`¿Cuántas botellas/unidades deseas sumar al stock de "${producto.nombre}"?`);
+      if (!cantidadStr || isNaN(cantidadStr) || parseInt(cantidadStr) <= 0) return;
+
+      const precioBotellaStr = prompt(`Costo de la botella en S/ (deja en blanco para mantener S/ ${parseFloat(producto.precio || 0).toFixed(2)}):`, producto.precio);
+      let nuevoPrecio = parseFloat(producto.precio || 0);
+      if (precioBotellaStr && !isNaN(precioBotellaStr) && parseFloat(precioBotellaStr) >= 0) {
+        nuevoPrecio = parseFloat(precioBotellaStr);
+      }
+
+      const nuevoStock = producto.stock + parseInt(cantidadStr);
+      const { error } = await client.from('productos').update({ stock: nuevoStock, precio: nuevoPrecio }).eq('id', id);
+
+      if (error) alert('Error al actualizar stock: ' + error.message);
+      else {
+        alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
+        cargarTodo();
+      }
     }
 
     async function abrirPerfumeSellado(idSellado) {
@@ -594,47 +677,6 @@
 
       alert(`¡"${perfumeSelladoObj.nombre}" se abrió correctamente! Quedan ${nuevoStockSellado} sellados.`);
       cargarTodo();
-    }
-
-    async function sumarStock(id, stockActual) {
-      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden gestionar el stock.');
-
-      const producto = listaProductos.find(p => p.id === id);
-      if (!producto) return;
-
-      if (producto.tipo === 'Perfume para Decant') {
-        const perfumeSellado = listaProductos.find(p => p.tipo === 'Perfume Sellado' && p.nombre.toLowerCase() === producto.nombre.toLowerCase());
-
-        if (perfumeSellado) {
-          const cantidadStr = prompt(`¿Cuántas botellas selladas de "${perfumeSellado.nombre}" vas a ABRIR para decants?\n\nStock sellado disponible: ${perfumeSellado.stock}`);
-          if (!cantidadStr || isNaN(cantidadStr) || parseInt(cantidadStr) <= 0) return;
-
-          const cant = parseInt(cantidadStr);
-          if (perfumeSellado.stock < cant) return alert(`¡No hay suficiente stock sellado! Solo tienes ${perfumeSellado.stock} unidades.`);
-
-          const { error: errSellado } = await client.from('productos').update({ stock: perfumeSellado.stock - cant }).eq('id', perfumeSellado.id);
-          if (errSellado) return alert('Error al descontar stock sellado: ' + errSellado.message);
-
-          const { error: errAbierto } = await client.from('productos').update({ stock: stockActual + cant }).eq('id', id);
-          if (errAbierto) return alert('Error al sumar stock para decants: ' + errAbierto.message);
-
-          alert(`¡Se abrieron ${cant} botella(s) de "${producto.nombre}"!`);
-          cargarTodo();
-          return;
-        }
-      }
-
-      const cantidad = prompt('¿Cuántas unidades deseas sumar al stock existente?');
-      if (!cantidad || isNaN(cantidad) || parseInt(cantidad) <= 0) return;
-
-      const nuevoStock = stockActual + parseInt(cantidad);
-      const { error } = await client.from('productos').update({ stock: nuevoStock }).eq('id', id);
-
-      if (error) alert('Error al actualizar stock: ' + error.message);
-      else {
-        alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
-        cargarTodo();
-      }
     }
 
     async function marcarComoVacio(id, nombre, stockActual) {
@@ -750,27 +792,36 @@
       const tipoVenta = document.getElementById('itemTipo').value;
       const tamanoDecant = document.getElementById('itemTamano').value;
       const cantidad = parseInt(document.getElementById('itemCantidad').value) || 1;
-      const precioUnitario = parseFloat(document.getElementById('itemPrecio').value);
+      const precioVentaCobrado = parseFloat(document.getElementById('itemPrecio').value);
 
       if (!perfumeId) return alert('Selecciona un perfume válido.');
-      if (isNaN(precioUnitario) || precioUnitario <= 0) return alert('Ingresa un precio válido mayor a 0.');
+      if (isNaN(precioVentaCobrado) || precioVentaCobrado <= 0) return alert('Ingresa un precio cobrado válido mayor a 0.');
 
       const perfumeObj = listaProductos.find(p => p.id == perfumeId);
-      if (!perfumeObj) return alert('Producto no encontrado.');
+      if (!perfumeObj) return alert('Producto no encontrado en inventario.');
 
       if (tipoVenta === 'Perfume Sellado' && perfumeObj.stock < cantidad) {
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
 
-      // Costo base del producto consultado directamente del catálogo
-      let costoUnitarioItem = parseFloat(perfumeObj.precio || 0);
+      let costoUnitarioFinal = 0;
 
-      if (tipoVenta === 'Decant') {
+      if (tipoVenta === 'Perfume Sellado') {
+        costoUnitarioFinal = parseFloat(perfumeObj.precio || 0);
+      } else {
+        // CÁLCULO PROPORCIONAL DE DECANT (Líquido + Envase)
+        const costoBotella100ml = parseFloat(perfumeObj.precio || 0);
+        const costoPorMl = costoBotella100ml / 100;
+        const ml = parseInt(tamanoDecant) || 2;
+        const costoLiquidoDecant = costoPorMl * ml;
+
         const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
         if (!vacioObj || vacioObj.stock < cantidad) {
           return alert(`Stock insuficiente de envases vacíos de ${tamanoDecant}. Quedan: ${vacioObj ? vacioObj.stock : 0}`);
         }
-        costoUnitarioItem += parseFloat(vacioObj.precio || 0);
+
+        const costoEnvaseVacio = parseFloat(vacioObj.precio || 0);
+        costoUnitarioFinal = costoLiquidoDecant + costoEnvaseVacio;
       }
 
       const item = {
@@ -779,10 +830,10 @@
         tipo: tipoVenta,
         tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
         cantidad: cantidad,
-        precio_unitario: precioUnitario,
-        costo_unitario: costoUnitarioItem,
-        subtotal: cantidad * precioUnitario,
-        costo_total: cantidad * costoUnitarioItem,
+        precio_unitario: precioVentaCobrado,
+        costo_unitario: costoUnitarioFinal,
+        subtotal: cantidad * precioVentaCobrado,
+        costo_total: cantidad * costoUnitarioFinal,
         imagen_url: perfumeObj.imagen_url,
         es_regalo: false
       };
@@ -831,6 +882,8 @@
       }
 
       const perfumeRegalo = perfumesAbiertos[num - 1];
+      const costoLiquido2ml = (parseFloat(perfumeRegalo.precio || 0) / 100) * 2;
+      const costoRegaloTotal = costoLiquido2ml + costoVacio;
 
       const regaloItem = {
         producto_id: perfumeRegalo.id,
@@ -839,9 +892,9 @@
         tamano: '2ml',
         cantidad: 1,
         precio_unitario: 0.00,
-        costo_unitario: costoVacio,
+        costo_unitario: costoRegaloTotal,
         subtotal: 0.00,
-        costo_total: costoVacio,
+        costo_total: costoRegaloTotal,
         imagen_url: perfumeRegalo.imagen_url,
         es_regalo: true
       };
@@ -872,7 +925,7 @@
               <img src="${item.imagen_url || IMG_DEFAULT}" style="width:36px; height:36px; object-fit:cover; border-radius:5px; border:1px solid var(--border);" onerror="this.src='${IMG_DEFAULT}'">
               <div>
                 <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge ${item.es_regalo ? 'badge-gift' : ''}">${item.es_regalo ? '🎁 GRATIS' : `${item.tipo} -${item.tamano}`}</span><br>
-                <span style="color:var(--muted); font-size:0.75rem;">Precio unitario: S/ ${item.precio_unitario.toFixed(2)}</span>
+                <span style="color:var(--muted); font-size:0.75rem;">Cobrado: S/ ${item.precio_unitario.toFixed(2)} | Costo Estimado: S/ ${item.costo_unitario.toFixed(2)}</span>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -894,13 +947,18 @@
       const nombreInput = document.getElementById('stkNombre').value.trim();
       const imagenInput = document.getElementById('stkImagen').value.trim();
       const cantidadReg = parseInt(document.getElementById('stkCantidad').value) || 1;
-      const precioInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
+      const precioMontoInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
+
+      let costoUnitarioCalculado = precioMontoInput;
+      if (tipo === 'Decant Vacío' && cantidadReg > 0) {
+        costoUnitarioCalculado = precioMontoInput / cantidadReg;
+      }
 
       const nuevo = {
         nombre: nombreInput,
         tipo: tipo,
         tamano: tipo === 'Decant Vacío' ? document.getElementById('stkTamanoVacios').value : null,
-        precio: precioInput,
+        precio: costoUnitarioCalculado,
         stock: cantidadReg,
         imagen_url: imagenInput || null
       };
@@ -933,7 +991,6 @@
         const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
         const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
         
-        // CÁLCULO REAL DE GANANCIA NETA
         const gananciaNetaVenta = totalMonto - totalCosto;
 
         for (const item of carritoVenta) {
@@ -1018,12 +1075,19 @@
           };
         }
         
-        // Evaluar ganancia neta o calcular en vivo si viene vacía
         let ganNeta = 0;
         if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
           ganNeta = parseFloat(v.ganancia_neta);
         } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
-          const costoTotalDetalles = v.detalles.reduce((acc, item) => acc + (parseFloat(item.costo_total) || 0), 0);
+          let costoTotalDetalles = 0;
+          v.detalles.forEach(item => {
+            let cUnit = parseFloat(item.costo_unitario || 0);
+            if (cUnit === 0 && item.producto_id) {
+              const prod = listaProductos.find(p => p.id === item.producto_id);
+              if (prod) cUnit = parseFloat(prod.precio || 0);
+            }
+            costoTotalDetalles += cUnit * (parseInt(item.cantidad) || 1);
+          });
           ganNeta = parseFloat(v.monto_total || 0) - costoTotalDetalles;
         } else {
           ganNeta = parseFloat(v.monto_total || 0);
@@ -1260,7 +1324,15 @@
         if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
           ganNeta = parseFloat(v.ganancia_neta);
         } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
-          const costoTotalDetalles = v.detalles.reduce((acc, item) => acc + (parseFloat(item.costo_total) || 0), 0);
+          let costoTotalDetalles = 0;
+          v.detalles.forEach(item => {
+            let cUnit = parseFloat(item.costo_unitario || 0);
+            if (cUnit === 0 && item.producto_id) {
+              const prod = listaProductos.find(p => p.id === item.producto_id);
+              if (prod) cUnit = parseFloat(prod.precio || 0);
+            }
+            costoTotalDetalles += cUnit * (parseInt(item.cantidad) || 1);
+          });
           ganNeta = parseFloat(v.monto_total || 0) - costoTotalDetalles;
         } else {
           ganNeta = parseFloat(v.monto_total || 0);
