@@ -113,7 +113,7 @@
     .day-header { width: 100%; margin: 0; padding: 14px 16px; background: linear-gradient(135deg, rgba(11,49,86,.9), rgba(6,38,71,.9)); border: none; border-radius: 0; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--ivory); }
     .day-header:hover { background: linear-gradient(135deg, rgba(13,58,99,1), rgba(11,49,86,1)); }
     .day-header-title { font-size: 0.92rem; font-weight: bold; text-transform: capitalize; color: var(--gold-light); }
-    .day-header-summary { font-size: 0.83rem; color: var(--ivory); }
+    .day-header-summary { font-size: 0.83rem; color: var(--ivory); text-align: right; }
     .day-content { padding: 10px 14px 14px; }
 
     .chart-container { background: rgba(2,19,38,.7); border: 1px solid var(--gold); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
@@ -293,7 +293,7 @@
             </div>
             <div class="grid-2">
               <div class="form-group">
-                <label>Precio Base (S/)</label>
+                <label>Precio Base / Costo (S/)</label>
                 <input type="number" step="0.01" id="stkPrecio" value="0.00">
               </div>
               <div class="form-group">
@@ -344,7 +344,7 @@
         </div>
 
         <div class="chart-container">
-          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
+          <h4 id="txtTituloGrafico" style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
           <canvas id="chartVentasDiarias" height="180"></canvas>
         </div>
 
@@ -542,7 +542,7 @@
             <div class="product-card-body">
               <div>
                 <h4 class="product-card-title">${p.nombre}</h4>
-                ${esAdmin() ? `<div class="product-card-meta">Base: <strong style="color:var(--gold-light);">S/ ${parseFloat(p.precio).toFixed(2)}</strong></div>` : ''}
+                ${esAdmin() ? `<div class="product-card-meta">Costo Base: <strong style="color:var(--gold-light);">S/ ${parseFloat(p.precio || 0).toFixed(2)}</strong></div>` : ''}
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                   <span class="badge ${badgeClass}">${badgeText}</span>
                   <span style="font-size:0.75rem; color:var(--muted);">${p.stock} unids.</span>
@@ -554,7 +554,7 @@
 
               ${esAdmin() ? `
                 <div class="product-card-actions">
-                  <button onclick="sumarStock(${p.id},${p.stock})" class="btn-add">➕ Sumar Stock</button>
+                  <button onclick="sumarStock(${p.id}, ${p.stock})" class="btn-add">➕ Sumar Stock</button>
                   ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
                   ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
                 </div>
@@ -763,11 +763,14 @@
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
 
+      let costoUnitarioItem = parseFloat(perfumeObj.precio || 0);
+
       if (tipoVenta === 'Decant') {
         const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
         if (!vacioObj || vacioObj.stock < cantidad) {
           return alert(`Stock insuficiente de envases vacíos de ${tamanoDecant}. Quedan: ${vacioObj ? vacioObj.stock : 0}`);
         }
+        costoUnitarioItem += parseFloat(vacioObj.precio || 0);
       }
 
       const item = {
@@ -777,7 +780,9 @@
         tamano: tipoVenta === 'Decant' ? tamanoDecant : 'Frasco Entero',
         cantidad: cantidad,
         precio_unitario: precioUnitario,
+        costo_unitario: costoUnitarioItem,
         subtotal: cantidad * precioUnitario,
+        costo_total: cantidad * costoUnitarioItem,
         imagen_url: perfumeObj.imagen_url,
         es_regalo: false
       };
@@ -804,11 +809,15 @@
       }
 
       const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === '2ml');
-      if (vacioRegalo && vacioRegalo.stock < 1) {
-        alert('⚠️ Nota: No quedan envases vacíos de 2ml registrados en el inventario para el regalo.');
+      let costoVacio = 0;
+      if (vacioRegalo) {
+        costoVacio = parseFloat(vacioRegalo.precio || 0);
+        if (vacioRegalo.stock < 1) {
+          alert('⚠️ Nota: No quedan envases vacíos de 2ml registrados en el inventario para el regalo.');
+        }
       }
 
-      let menuOpciones = "Selecciona el número del perfume que regalarlas en 2ml:\n\n";
+      let menuOpciones = "Selecciona el número del perfume que regalarás en 2ml:\n\n";
       perfumesAbiertos.forEach((p, idx) => {
         menuOpciones += `${idx + 1}. ${p.nombre}\n`;
       });
@@ -830,7 +839,9 @@
         tamano: '2ml',
         cantidad: 1,
         precio_unitario: 0.00,
+        costo_unitario: costoVacio,
         subtotal: 0.00,
+        costo_total: costoVacio,
         imagen_url: perfumeRegalo.imagen_url,
         es_regalo: true
       };
@@ -904,7 +915,6 @@
       }
     });
 
-    // PROCESAR VENTA CON PROTECCIÓN DE DOBLE CLIC Y BLOQUEO DE BOTÓN
     document.getElementById('formVenta').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -921,6 +931,8 @@
         const canal = document.getElementById('vtaCanal').value;
         const metodoPago = document.getElementById('vtaMetodoPago').value;
         const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
+        const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
+        const gananciaNetaVenta = totalMonto - totalCosto;
 
         for (const item of carritoVenta) {
           if (item.tipo === 'Perfume Sellado') {
@@ -943,6 +955,7 @@
           producto_nombre: resumenNombres,
           tipo_venta: primerTipo,
           monto_total: totalMonto,
+          ganancia_neta: gananciaNetaVenta,
           vendedor_email: usuarioActual.email,
           ubicacion_venta: `${canal} (${metodoPago})`,
           detalles: carritoVenta,
@@ -972,7 +985,7 @@
       }
     });
 
-    // HISTORIAL DE VENTAS Y BOTÓN DESHACER (SOLO ADMINS)
+    // HISTORIAL DE VENTAS CON RESTRICCIÓN DE VISIBILIDAD DE GANANCIA NETA
     async function cargarHistorial() {
       const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
       listaVentasCache = ventas || [];
@@ -983,6 +996,7 @@
         return;
       }
 
+      const esUsuarioAdmin = esAdmin();
       const grupos = {};
       
       ventas.forEach((v, index) => {
@@ -998,12 +1012,16 @@
             fechaFormateada: fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
             etiquetaCorta: fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
             ventas: [],
-            totalGanado: 0
+            totalGanado: 0,
+            gananciaNetaTotal: 0
           };
         }
         
         grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index });
         grupos[claveFechaLocal].totalGanado += parseFloat(v.monto_total || 0);
+        
+        const ganNeta = v.ganancia_neta !== undefined && v.ganancia_neta !== null ? parseFloat(v.ganancia_neta) : parseFloat(v.monto_total || 0);
+        grupos[claveFechaLocal].gananciaNetaTotal += ganNeta;
       });
 
       renderizarGraficoVentas(grupos);
@@ -1013,22 +1031,28 @@
       contenedor.innerHTML = clavesOrdenadas.map((clave, dayIdx) => {
         const grupo = grupos[clave];
         const numVentas = grupo.ventas.length;
-        const totalSoles = grupo.totalGanado.toFixed(2);
+        const totalVentaSoles = grupo.totalGanado.toFixed(2);
+        const gananciaNetaSoles = grupo.gananciaNetaTotal.toFixed(2);
         const esPrimerDia = dayIdx === 0;
 
         const htmlVentas = grupo.ventas.map(item => {
           const v = item.venta;
           const idx = item.indexGlobal;
+          const gNeta = v.ganancia_neta !== undefined && v.ganancia_neta !== null ? parseFloat(v.ganancia_neta).toFixed(2) : parseFloat(v.monto_total || 0).toFixed(2);
+          
           return `
             <div class="stock-item" style="margin-top:8px;">
               <div>
                 <p style="margin:0;font-size:.72rem;">${new Date(v.fecha).toLocaleTimeString()}</p>
                 <h4 style="margin:5px 0;">${v.producto_nombre}</h4>
-                <p class="price" style="margin:0;font-size:.83rem;">Total: S/ ${v.monto_total.toFixed(2)}</p>
+                <p class="price" style="margin:0;font-size:.83rem;">
+                  Total Venta: S/ ${v.monto_total.toFixed(2)}
+                  ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: S/ ${gNeta}</span>` : ''}
+                </p>
                 <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
                   ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="padding:4px 10px; font-size:0.75rem; width:auto; margin:0;">📸 Ver Captura</button>` : ''}
-                  ${esAdmin() ? `<button type="button" onclick="deshacerVenta(${v.id})" class="btn-undo">↩️ Deshacer Venta</button>` : ''}
+                  ${esUsuarioAdmin ? `<button type="button" onclick="deshacerVenta(${v.id})" class="btn-undo">↩️ Deshacer Venta</button>` : ''}
                 </div>
               </div>
             </div>
@@ -1040,7 +1064,10 @@
             <button type="button" class="day-header" onclick="toggleDiaHistorial('${clave}')">
               <span class="day-header-title">📋 Cierre de Caja: ${grupo.fechaFormateada}</span>
               <span class="day-header-summary">
-                <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong> | Ganancia: <strong style="color:var(--gold-light);">S/ ${totalSoles}</strong> <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
+                <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong><br>
+                <span>Venta Total: <strong>S/ ${totalVentaSoles}</strong></span>
+                ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: <strong>S/ ${gananciaNetaSoles}</strong></span>` : ''}
+                <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
               </span>
             </button>
             <div id="content-${clave}" class="day-content ${esPrimerDia ? '' : 'hidden'}">
@@ -1051,7 +1078,6 @@
       }).join('');
     }
 
-    // FUNCIÓN PARA DESHACER LA VENTA Y DEVOLVER STOCK (SOLO ADMIN)
     async function deshacerVenta(idVenta) {
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden deshacer o anular ventas.');
 
@@ -1061,7 +1087,6 @@
       const confirmar = confirm(`⚠️ ¿Confirmas que deseas DESHACER y ANULAR la venta #${idVenta}?\n\n- Se eliminará del historial.\n- Se devolverá automáticamente el stock a los productos/envases correspondientes.`);
       if (!confirmar) return;
 
-      // Restablecer stock si existen detalles
       if (Array.isArray(ventaObj.detalles)) {
         for (const item of ventaObj.detalles) {
           if (item.tipo === 'Perfume Sellado') {
@@ -1087,14 +1112,22 @@
       }
     }
 
-    // GRÁFICO DE BARRAS
     function renderizarGraficoVentas(grupos) {
       const ctx = document.getElementById('chartVentasDiarias');
       if (!ctx) return;
 
+      const esUsuarioAdmin = esAdmin();
+      const txtTitulo = document.getElementById('txtTituloGrafico');
+      
+      if (txtTitulo) {
+        txtTitulo.innerText = esUsuarioAdmin ? '📈 Rendimiento Diario (Ganancia Neta vs Metas)' : '📈 Rendimiento Diario de Ventas';
+      }
+
       const clavesOrdenadas = Object.keys(grupos).sort();
       const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
-      const dataGanancias = clavesOrdenadas.map(c => grupos[c].totalGanado);
+      
+      // Administradores ven Ganancia Neta en el gráfico, vendedores ven Venta Total
+      const dataGanancias = clavesOrdenadas.map(c => esUsuarioAdmin ? grupos[c].gananciaNetaTotal : grupos[c].totalGanado);
 
       const coloresBarras = dataGanancias.map(valor => {
         if (valor >= META_DIARIA) return '#85b88f';
@@ -1111,7 +1144,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: 'Ganancia Diaria (S/)',
+            label: esUsuarioAdmin ? 'Ganancia Neta Diaria (S/)' : 'Ventas Totales (S/)',
             data: dataGanancias,
             backgroundColor: coloresBarras,
             borderColor: 'rgba(226, 177, 86, 0.6)',
@@ -1127,7 +1160,7 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return ` Ganado: S/ ${context.parsed.y.toFixed(2)}`;
+                  return ` ${esUsuarioAdmin ? 'Ganancia Neta' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
                 }
               }
             },
@@ -1211,15 +1244,17 @@
       if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Fecha y Hora", "Productos Vendidos", "Monto Total (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
+        ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Ganancia Neta (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
       ];
 
       listaVentasCache.forEach(v => {
+        const ganNeta = v.ganancia_neta !== undefined && v.ganancia_neta !== null ? parseFloat(v.ganancia_neta) : parseFloat(v.monto_total || 0);
         datosExcel.push([
           v.id || '',
           new Date(v.fecha).toLocaleString(),
           v.producto_nombre || '',
           parseFloat(v.monto_total || 0),
+          ganNeta,
           v.vendedor_email || '',
           v.ubicacion_venta || '',
           v.comprobante_url ? 'SÍ' : 'NO'
