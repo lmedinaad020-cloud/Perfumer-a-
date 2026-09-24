@@ -776,7 +776,7 @@
       // 4. DECANTS GENERALES
       if (tamanoDecant === '3ml') return 15;
       if (tamanoDecant === '5ml') return 25;
-      if (tamanoDecant === '10ml') return 35; // 👈 Tarifa general de 10ml
+      if (tamanoDecant === '10ml') return 35;
       if (tamanoDecant === '2ml') return 10;
 
       return parseFloat(perfumeObj.precio_sugerido || 0);
@@ -1241,7 +1241,7 @@
                 <h4 style="margin:5px 0; color:var(--ivory);">${v.producto_nombre}</h4>
                 <p class="price" style="margin:0;font-size:.83rem;">
                   Total Venta: S/ ${parseFloat(v.monto_total).toFixed(2)}
-                  ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: S/ ${gNeta}</span>` : ''}
+                  ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Margen de Contribución: S/ ${gNeta}</span>` : ''}
                 </p>
                 <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
@@ -1260,7 +1260,7 @@
               <span class="day-header-summary">
                 <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong><br>
                 <span>Venta Total: <strong>S/ ${totalVentaSoles}</strong></span>
-                ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: <strong>S/ ${gananciaNetaSoles}</strong></span>` : ''}
+                ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Margen de Contribución: <strong>S/ ${gananciaNetaSoles}</strong></span>` : ''}
                 <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
               </span>
             </button>
@@ -1314,7 +1314,7 @@
       const txtTitulo = document.getElementById('txtTituloGrafico');
       
       if (txtTitulo) {
-        txtTitulo.innerText = esUsuarioAdmin ? '📈 Rendimiento Diario (Ganancia Neta vs Metas)' : '📈 Rendimiento Diario de Ventas';
+        txtTitulo.innerText = esUsuarioAdmin ? '📈 Rendimiento Diario (Margen de Contribución vs Metas)' : '📈 Rendimiento Diario de Ventas';
       }
 
       const clavesOrdenadas = Object.keys(grupos).sort();
@@ -1336,7 +1336,7 @@
         data: {
           labels: labels,
           datasets: [{
-            label: esUsuarioAdmin ? 'Ganancia Neta Diaria (S/)' : 'Ventas Totales (S/)',
+            label: esUsuarioAdmin ? 'Margen de Contribución Diario (S/)' : 'Ventas Totales (S/)',
             data: dataGanancias,
             backgroundColor: coloresBarras,
             borderColor: 'rgba(226, 177, 86, 0.6)',
@@ -1352,7 +1352,7 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return ` ${esUsuarioAdmin ? 'Ganancia Neta' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
+                  return ` ${esUsuarioAdmin ? 'Margen de Contribución' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
                 }
               }
             },
@@ -1436,7 +1436,7 @@
       if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Ganancia Neta (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
+        ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Margen de Contribución (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
       ];
 
       listaVentasCache.forEach(v => {
