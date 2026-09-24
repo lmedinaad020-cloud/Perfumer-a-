@@ -3,75 +3,410 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo ALPHA Perfumes y Decants</title>
-
+  <title>ALPHA Perfumes y Decants</title>
+  
   <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
+  <!-- SUPABASE, SHEETJS & CHART.JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 
   <style>
     :root {
       --night: #031a34;
       --navy: #062647;
       --surface: #0b3156;
+      --surface-soft: #0d3a63;
       --border: rgba(226, 177, 86, .27);
       --gold: #c99036;
       --gold-light: #f1c36d;
       --ivory: #f6f0e7;
       --muted: #b8c6d5;
-      --wsp-green: #25d366;
+      --success: #85b88f;
+      --danger: #d99076;
+      --warning: #f1c36d;
+      --yape-purple: #742284;
     }
     * { box-sizing: border-box; }
     body { min-height: 100vh; margin: 0; padding: 24px 16px 40px; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ivory); background: radial-gradient(circle at 50% -10%, #124a76 0, var(--night) 42%, #021326 100%); }
-    .app-shell { max-width: 950px; margin: auto; }
-    .brand { text-align: center; margin-bottom: 24px; }
-    .brand img { width: 110px; height: 110px; border-radius: 50%; object-fit: contain; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.4)); }
-    .brand-name { font-family: Georgia, serif; letter-spacing: .35em; font-size: 1.8rem; margin: 8px 0 2px; color: var(--ivory); }
-    .brand-tagline { color: var(--gold-light); letter-spacing: .12em; font-size: 0.8rem; margin: 0; }
-    .gold-rule { width: 180px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); margin: 12px auto; }
+    body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .16; background-image: linear-gradient(90deg, transparent 49%, rgba(241,195,109,.15) 50%, transparent 51%); background-size: 84px 84px; }
+    .app-shell { position: relative; width: min(100%, 950px); margin: auto; }
+    .brand { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .brand img { width: 148px; height: 148px; object-fit: contain; border-radius: 50%; filter: drop-shadow(0 10px 22px rgba(0,0,0,.32)); }
+    .brand-name { margin: -2px 0 2px; font-family: Georgia, serif; font-weight: 500; font-size: clamp(1.55rem, 4vw, 2.15rem); letter-spacing: .38em; padding-left: .38em; color: var(--ivory); }
+    .brand-tagline { margin: 0; color: var(--gold-light); font-family: Georgia, serif; letter-spacing: .11em; font-size: .78rem; }
+    .gold-rule { width: min(310px, 84%); height: 1px; margin: 14px auto 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+    .header { padding: 0 0 18px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .header .brand { align-items: flex-start; text-align: left; }
+    .header .brand img { width: 70px; height: 70px; position: absolute; left: 0; top: -4px; }
+    .header .brand-name { font-size: 1.3rem; margin-left: 80px; }
+    .header .brand-tagline { margin-left: 80px; }
+    .header .gold-rule { width: 100%; margin-top: 14px; }
+    .card { background: linear-gradient(145deg, rgba(13,58,99,.96), rgba(5,35,65,.96)); border: 1px solid var(--border); box-shadow: 0 16px 36px rgba(0,0,0,.22); border-radius: 14px; padding: 22px; margin-top: 16px; }
+    .login-card { max-width: 440px; margin: 30px auto 0; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: .75rem; letter-spacing: .05em; margin-bottom: 6px; color: var(--gold-light); }
+    input, select { width: 100%; padding: 11px 12px; border-radius: 7px; border: 1px solid rgba(246,240,231,.22); outline: none; background: rgba(2,19,38,.52); color: var(--ivory); font: inherit; }
+    input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,144,54,.16); }
+    button { width: 100%; padding: 12px 14px; background: linear-gradient(135deg, #dba648, #ae7628); color: #fffaf0; border: 1px solid #efc66e; border-radius: 7px; font: 700 .87rem inherit; letter-spacing: .02em; cursor: pointer; margin-top: 8px; transition: transform .15s, filter .15s; }
+    button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+    button.btn-sec { background: transparent; border-color: rgba(246,240,231,.3); color: var(--muted); }
+    button.btn-add { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #5e986c, #3d7452); border-color: #8fc49a; font-size: .75rem; }
+    button.btn-open { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #60a5fa; font-size: .75rem; color: #fff; }
+    button.btn-empty { width: auto; margin: 0; padding: 7px 10px; background: linear-gradient(135deg, #b85c5c, #8a3636); border-color: #d99076; font-size: .75rem; }
+    button.btn-del { width: auto; margin: 0; padding: 4px 8px; background: #b85c5c; border: none; font-size: .7rem; border-radius: 4px; color: #fff; }
+    button.btn-undo { width: auto; margin: 0; padding: 5px 10px; background: linear-gradient(135deg, #d9534f, #c9302c); border-color: #d9534f; font-size: .72rem; color: #fff; border-radius: 5px; }
+    button.btn-yape { background: linear-gradient(135deg, #8a2be2, #5c189a); border-color: #b15eff; color: #fff; }
     
-    .search-box { margin-bottom: 16px; }
-    .search-box input { width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--gold); background: rgba(2,19,38,0.7); color: var(--ivory); outline: none; font-size: 0.9rem; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: .68rem; background: rgba(201,144,54,.16); border: 1px solid rgba(241,195,109,.35); color: var(--gold-light); }
+    .badge-gift { background: rgba(133, 184, 143, .25); border-color: #85b88f; color: #a3e6af; }
+    .badge-ok { background: rgba(133, 184, 143, .2); border-color: #85b88f; color: #a3e6af; }
+    .badge-low { background: rgba(241, 195, 109, .2); border-color: #f1c36d; color: #f1c36d; }
+    .badge-zero { background: rgba(217, 144, 118, .2); border-color: #d99076; color: #ffb399; }
+    .price { color: var(--gold-light); font-weight: 700; }
+    .hidden { display: none !important; }
+    .nav-tabs { display: flex; gap: 9px; margin: 0 0 16px; flex-wrap: wrap; }
+    .nav-tabs button { flex: 1; margin: 0; background: rgba(11,49,86,.82); border-color: var(--border); color: var(--ivory); font-size: .78rem; min-width: 100px; }
+    .nav-tabs button:hover { border-color: var(--gold); }
     
-    .inv-filter-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 16px; }
-    .chip-btn { flex: none; padding: 7px 16px; font-size: 0.8rem; border-radius: 999px; background: rgba(2,19,38,0.6); border: 1px solid var(--border); color: var(--ivory); cursor: pointer; }
+    .inv-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .inv-summary-card { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+    .inv-summary-card h5 { margin: 0; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .inv-summary-card .val { font-size: 1.3rem; font-weight: bold; color: var(--gold-light); margin-top: 4px; }
+
+    .inv-filter-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; }
+    .chip-btn { flex: none; width: auto; margin: 0; padding: 6px 14px; font-size: 0.75rem; border-radius: 999px; background: rgba(2,19,38,.6); border: 1px solid var(--border); color: var(--ivory); cursor: pointer; }
     .chip-btn.active { background: var(--gold); color: #000; font-weight: bold; border-color: var(--gold-light); }
 
-    .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
-    .product-card { background: rgba(2,19,38,.6); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
-    .product-card:hover { border-color: var(--gold); transform: translateY(-3px); }
-    .product-card-img-wrapper { width: 100%; height: 160px; background: rgba(0,0,0,0.2); position: relative; }
+    .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 12px; }
+    .product-card { background: rgba(2,19,38,.6); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s, border-color 0.2s; position: relative; }
+    .product-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+    .product-card-img-wrapper { width: 100%; height: 130px; background: rgba(0,0,0,0.3); position: relative; overflow: hidden; }
     .product-card-img { width: 100%; height: 100%; object-fit: cover; }
-    .badge-type { position: absolute; top: 8px; left: 8px; padding: 4px 8px; border-radius: 99px; font-size: 0.65rem; background: rgba(201,144,54,0.2); border: 1px solid var(--gold-light); color: var(--gold-light); font-weight: bold; }
-    .product-card-body { padding: 14px; display: flex; flex-direction: column; flex-grow: 1; justify-content: space-between; }
-    .product-title { font-size: 0.95rem; font-weight: bold; margin: 0 0 6px; color: var(--ivory); }
-    .product-price { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; margin: 4px 0 12px; }
-    
-    .btn-wsp { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 10px; background: #25d366; color: #000; font-weight: bold; border: none; border-radius: 8px; text-decoration: none; font-size: 0.82rem; transition: filter 0.2s; }
-    .btn-wsp:hover { filter: brightness(1.1); }
+    .product-card-badge { position: absolute; top: 8px; left: 8px; }
+    .product-card-body { padding: 12px; display: flex; flex-direction: column; flex-grow: 1; justify-content: space-between; }
+    .product-card-title { margin: 0 0 6px; font-size: 0.9rem; font-weight: bold; color: var(--ivory); line-height: 1.25; }
+    .product-card-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+    .product-card-stock-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin: 6px 0 10px; }
+    .product-card-stock-fill { height: 100%; border-radius: 2px; }
+    .product-card-actions { display: flex; gap: 6px; flex-direction: column; margin-top: 6px; }
+
+    .search-box { position: relative; margin: 8px 0 10px; }
+    .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }
+    .search-box::before { content: "🔍"; position: absolute; left: 11px; top: 11px; font-size: 0.85rem; opacity: 0.7; }
+
+    .preview-card { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(2,19,38,.7); border: 1px dashed var(--gold); border-radius: 99px; margin-bottom: 14px; }
+    .preview-card img { width: 52px; height: 52px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); }
+
+    .cart-box { background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 10px; padding: 14px; margin-top: 18px; }
+    .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px rgba(246,240,231,.1) solid; font-size: 0.82rem; }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-total { font-size: 1.1rem; color: var(--gold-light); font-weight: bold; text-align: right; margin-top: 10px; }
+
+    .day-group { margin-bottom: 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: rgba(2,19,38,.3); }
+    .day-header { width: 100%; margin: 0; padding: 14px 16px; background: linear-gradient(135deg, rgba(11,49,86,.9), rgba(6,38,71,.9)); border: none; border-radius: 0; text-align: left; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--ivory); }
+    .day-header:hover { background: linear-gradient(135deg, rgba(13,58,99,1), rgba(11,49,86,1)); }
+    .day-header-title { font-size: 0.92rem; font-weight: bold; text-transform: capitalize; color: var(--gold-light); }
+    .day-header-summary { font-size: 0.83rem; color: var(--ivory); text-align: right; }
+    .day-content { padding: 10px 14px 14px; }
+
+    .chart-container { background: rgba(2,19,38,.7); border: 1px solid var(--gold); border-radius: 12px; padding: 16px; margin-bottom: 22px; }
+
+    .timer-card { text-align: center; background: rgba(2,19,38,.6); border: 1px solid var(--gold); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .timer-display { font-size: 2.2rem; font-weight: bold; font-family: monospace; color: var(--gold-light); margin: 10px 0; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+    .modal-content { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
+
+    h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
+    p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
+    @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } .day-header { flex-direction: column; align-items: flex-start; gap: 4px; } .inv-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
   </style>
 </head>
 <body>
   <main class="app-shell">
-    <header class="brand">
-      <img src="assets/alpha-logo.jpeg" alt="Alpha Perfumes">
-      <h1 class="brand-name">ALPHA</h1>
-      <p class="brand-tagline">CATÁLOGO EXCLUSIVO DE PERFUMES Y DECANTS</p>
-      <div class="gold-rule"></div>
-    </header>
+    <section id="sec-login" class="card login-card">
+      <div class="brand"><img src="assets/alpha-logo.jpeg" alt="Alpha Perfumes y Decants"><h1 class="brand-name">VENTAS</h1><p class="brand-tagline">PLATAFORMA</p><div class="gold-rule"></div></div>
+      <p style="text-align:center; margin:22px 0 16px;">Iniciar sesión</p>
+      <form id="formLogin">
+        <div class="form-group"><label>Correo electrónico</label><input type="email" id="loginEmail" placeholder="usuario@email.com" required></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="loginPass" placeholder="••••••••" required></div>
+        <button type="submit">Ingresar</button>
+      </form>
+    </section>
 
-    <div class="search-box">
-      <input type="text" id="inputBusqueda" placeholder="🔍 Buscar perfume por nombre..." oninput="filtrarCat()">
+    <section id="sec-app" class="hidden">
+      <header class="header">
+        <div class="brand"><img src="assets/alpha-logo.jpeg" alt="Alpha"><h1 class="brand-name">ALPHA</h1><p class="brand-tagline">PERFUMES Y DECANTS</p><div class="gold-rule"></div></div>
+        <p id="userLogged" style="margin:12px 0 0; font-size:.8rem;"></p>
+        <button onclick="cerrarSesion()" class="btn-sec" style="padding:6px 10px;font-size:.72rem;width:auto;margin-top:7px;">Cerrar sesión</button>
+      </header>
+
+      <nav class="nav-tabs">
+        <button onclick="mostrarTab('venta')">🛒 Vender</button>
+        <button onclick="mostrarTab('stock')">📦 Inventario</button>
+        <button onclick="mostrarTab('historial')">📊 Historial</button>
+        <button onclick="mostrarTab('asistencia')">⏱️ Asistencia</button>
+      </nav>
+
+      <!-- TAB VENTA -->
+      <div id="tab-venta" class="card">
+        <h3>🛒 Registrar Nueva Venta</h3>
+        
+        <div style="background: rgba(2,19,38,.4); padding:14px; border-radius:10px; border:1px solid rgba(246,240,231,.1);">
+          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">1. Agregar producto a la orden</h4>
+          
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Tipo de ítem</label>
+              <select id="itemTipo" onchange="actualizarOpcionesVenta()">
+                <option value="Perfume Sellado">Perfume Sellado</option>
+                <option value="Decant">Decant (Fraccionado)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Buscar perfume</label>
+              <div class="search-box" style="margin:0;">
+                <input type="text" id="itemBuscador" placeholder="Escribe el nombre..." oninput="filtrarPerfumesVenta()">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Seleccionar perfume disponible</label>
+            <select id="itemPerfume" onchange="mostrarPreviewPerfumeVenta()"></select>
+          </div>
+
+          <div id="previewPerfumeVenta" class="preview-card hidden">
+            <img id="prevImg" src="" alt="Perfume" onerror="this.src='https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg'">
+            <div>
+              <h4 id="prevNombre" style="margin:0 0 3px; font-size:0.88rem; color:var(--ivory);">--</h4>
+              <p id="prevStock" style="margin:0; font-size:0.75rem; color:var(--gold-light);">Stock disponible: --</p>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div id="grpTamano" class="form-group hidden">
+              <label>Tamaño de decant</label>
+              <select id="itemTamano">
+                <option value="2ml">2ml</option>
+                <option value="3ml">3ml</option>
+                <option value="5ml">5ml</option>
+                <option value="10ml">10ml</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input type="number" id="itemCantidad" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label>Precio Cobrado por Unidad (S/)</label>
+              <input type="number" step="0.01" id="itemPrecio" placeholder="Ej: 25.00">
+            </div>
+          </div>
+
+          <button type="button" onclick="agregarAlCarrito()" class="btn-add" style="width:100%; margin-top:6px; padding:10px;">➕ Agregar este ítem a la venta</button>
+        </div>
+
+        <div class="cart-box">
+          <h4 style="margin:0 0 10px; color:var(--ivory); border-bottom:1px solid var(--border); padding-bottom:6px;">🛍️ Detalle de la Venta Actual</h4>
+          <div id="listaCarrito"><p class="empty-msg">El carrito está vacío. Agrega productos arriba.</p></div>
+          <div class="cart-total" id="txtTotalVenta">Total a cobrar: S/ 0.00</div>
+        </div>
+
+        <form id="formVenta" style="margin-top:18px;">
+          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">2. Datos del pago, envío y comprobante</h4>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Método de pago</label>
+              <select id="vtaMetodoPago">
+                <option value="Yape">Yape / Plin</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Tarjeta">Tarjeta</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Canal de venta</label>
+              <select id="vtaCanal">
+                <option value="Tienda Local">Tienda Local</option>
+                <option value="Alpha Móvil">Alpha Móvil</option>
+                <option value="Instagram">Instagram</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Delivery Presencial">Delivery Presencial</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <button type="button" onclick="abrirModalQRYape()" class="btn-yape" style="padding:10px; font-size:0.85rem;">📱 Ver QR de Yape para Cobro</button>
+          </div>
+
+          <div class="form-group" style="margin-top:8px;">
+            <label>📸 Foto del Comprobante / Pantalla de Yape (Opcional)</label>
+            <input type="file" id="vtaFotoComprobante" accept="image/*" capture="environment" onchange="previsualizarComprobante(event)">
+            <div id="previewComprobanteContainer" class="hidden" style="margin-top:10px; text-align:center;">
+              <img id="imgComprobantePreview" src="" alt="Comprobante" style="max-width:180px; max-height:220px; border-radius:8px; border:1px solid var(--gold);">
+            </div>
+          </div>
+
+          <button type="submit" id="btnSubmitVenta" style="margin-top:12px; font-size:1rem; padding:14px;">✅ Procesar Venta Completa</button>
+        </form>
+      </div>
+
+      <!-- TAB STOCK -->
+      <div id="tab-stock" class="card hidden">
+        <div id="secCrearProducto" class="hidden">
+          <h3>➕ Crear Nuevo Producto / Lote de Decants</h3>
+          <form id="formStock">
+            <div class="form-group">
+              <label>Tipo de registro</label>
+              <select id="stkTipo" onchange="toggleCamposStock()">
+                <option value="Perfume Sellado">Perfume Sellado (Botella Entera)</option>
+                <option value="Perfume para Decant">Perfume Abierto p/ Decants</option>
+                <option value="Decant Vacío">Envase Decant Vacío (Lote)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nombre / Descripción</label>
+              <input type="text" id="stkNombre" placeholder="Ej: Sauvage EDP o Envase Spray Atomizador" required>
+            </div>
+            <div class="form-group">
+              <label>URL de Imagen (Opcional)</label>
+              <input type="url" id="stkImagen" placeholder="https://ejemplo.com/imagen.jpg">
+            </div>
+
+            <!-- TAMAÑO DE BOTELLA ENTERA O ENVASE -->
+            <div id="grpTamanoBotella" class="form-group">
+              <label id="lblTamanoBotella">Capacidad de la Botella</label>
+              <select id="stkTamanoBotella">
+                <option value="100ml">100ml</option>
+                <option value="120ml">120ml</option>
+                <option value="125ml">125ml</option>
+                <option value="200ml">200ml</option>
+              </select>
+            </div>
+
+            <div id="grpTamanoVacios" class="form-group hidden">
+              <label>Capacidad del envase vacío</label>
+              <select id="stkTamanoVacios">
+                <option value="2ml">2ml</option>
+                <option value="3ml">3ml</option>
+                <option value="5ml">5ml</option>
+                <option value="10ml">10ml</option>
+              </select>
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label id="lblPrecioStock">Costo Comprado (S/)</label>
+                <input type="number" step="0.01" id="stkPrecio" placeholder="Ej: 75.00" value="0.00">
+              </div>
+              <div class="form-group">
+                <label>Precio Sugerido de Venta / PVP (S/)</label>
+                <input type="number" step="0.01" id="stkPrecioSugerido" placeholder="Ej: 120.00" value="0.00">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label id="lblCantidadStock">Cantidad de unidades en el Lote</label>
+              <input type="number" id="stkCantidad" placeholder="Ej: 112" value="1" required>
+            </div>
+
+            <button type="submit">Guardar en Inventario</button>
+          </form>
+        </div>
+
+        <h3 style="margin-top:10px;">📦 Catálogo e Inventario</h3>
+
+        <div class="inv-summary-grid">
+          <div class="inv-summary-card">
+            <h5>Total Ítems</h5>
+            <div class="val" id="metrTotal">0</div>
+          </div>
+          <div class="inv-summary-card">
+            <h5>Stock Bajo</h5>
+            <div class="val" id="metrBajo" style="color:var(--warning);">0</div>
+          </div>
+          <div class="inv-summary-card">
+            <h5>Agotados</h5>
+            <div class="val" id="metrAgotado" style="color:var(--danger);">0</div>
+          </div>
+        </div>
+        
+        <div class="search-box">
+          <input type="text" id="inputBusqueda" placeholder="Buscar producto por nombre..." oninput="filtrarInventario()">
+        </div>
+
+        <div class="inv-filter-chips">
+          <button class="chip-btn active" onclick="filtrarCategoriaChip('TODOS', this)">🌐 Todos</button>
+          <button class="chip-btn" onclick="filtrarCategoriaChip('SELLADO', this)">🧴 Sellados</button>
+          <button class="chip-btn" onclick="filtrarCategoriaChip('DECANT', this)">🧪 Abiertos p/ Decant</button>
+          <button class="chip-btn" onclick="filtrarCategoriaChip('VACIO', this)">📦 Envases Vacíos</button>
+        </div>
+
+        <div id="gridInventario" class="inv-grid">Cargando catálogo...</div>
+      </div>
+
+      <!-- TAB HISTORIAL -->
+      <div id="tab-historial" class="card hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <h3 style="margin:0;">📊 Historial por Cierre de Caja Diaria</h3>
+          <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
+        </div>
+
+        <div class="chart-container">
+          <h4 id="txtTituloGrafico" style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
+          <canvas id="chartVentasDiarias" height="180"></canvas>
+        </div>
+
+        <div id="listaVentas">Cargando historial...</div>
+      </div>
+
+      <!-- TAB ASISTENCIA -->
+      <div id="tab-asistencia" class="card hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <h3 style="margin:0;">⏱️ Control de Asistencia</h3>
+          <button id="btnExportarAsistencia" onclick="exportarAsistenciaExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Reporte Asistencia (.xlsx)</button>
+        </div>
+
+        <div class="timer-card">
+          <h4 style="margin:0; color:var(--ivory);">Registro de Jornada de Hoy</h4>
+          <p id="txtEstadoJornada" style="margin:6px 0 10px; font-size:0.85rem;">Cargando estado...</p>
+          <div id="timerDisplay" class="timer-display">00:00:00</div>
+          <button id="btnMarcarIngreso" onclick="marcarIngresoTrabajo()" style="background:linear-gradient(135deg, #28a745, #1e7e34); border-color:#28a745; font-size:1rem; padding:12px;">▶️ Inicio de Trabajo (Marcar Entrada)</button>
+          <button id="btnMarcarSalida" onclick="marcarSalidaTrabajo()" class="hidden" style="background:linear-gradient(135deg, #dc3545, #bd2130); border-color:#dc3545; font-size:1rem; padding:12px;">⏹️ Marcar Salida del Trabajo</button>
+        </div>
+
+        <h4 style="margin:20px 0 10px; color:var(--gold-light);">📋 Registros de Asistencia Recientes</h4>
+        <div id="listaAsistencia">Cargando historial de asistencia...</div>
+      </div>
+    </section>
+
+    <!-- MODAL COMPROBANTE -->
+    <div id="modalComprobante" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h4 style="margin:0 0 12px; color:var(--gold-light);">📸 Comprobante de Pago</h4>
+        <img id="modalImgComprobante" src="" alt="Comprobante de pago">
+        <button onclick="cerrarModalComprobante()" style="margin-top:14px;">Cerrar</button>
+      </div>
     </div>
 
-    <div class="inv-filter-chips">
-      <button class="chip-btn active" onclick="filtrarChip('TODOS', this)">🌐 Todos</button>
-      <button class="chip-btn" onclick="filtrarChip('SELLADO', this)">🧴 Perfumes Sellados</button>
-      <button class="chip-btn" onclick="filtrarChip('DECANT', this)">🧪 Decants Fraccionados</button>
+    <!-- MODAL QR YAPE -->
+    <div id="modalQRYape" class="modal-overlay hidden">
+      <div class="modal-content" style="border-color:#b15eff;">
+        <h4 style="margin:0 0 8px; color:#f1c36d;">📱 Escanea para Yapear</h4>
+        <p style="margin:0 0 12px; font-size:0.8rem; color:var(--ivory);">ALPHA Perfumes y Decants</p>
+        <img id="imgQRYape" src="assets/qr-yape.png.jpeg" alt="Código QR Yape" style="max-width:100%; max-height:65vh; border-radius:8px; border:1px solid #b15eff; object-fit:contain;">
+        <button onclick="cerrarModalQRYape()" style="margin-top:14px; background:linear-gradient(135deg, #742284, #5c189a); border-color:#b15eff;">Cerrar QR</button>
+      </div>
     </div>
-
-    <div id="gridCat" class="inv-grid">Cargando catálogo...</div>
   </main>
 
   <script>
@@ -79,73 +414,1179 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
-    const NUMERO_WSP = '51999999999'; // 👈 CAMBIA ESTE NÚMERO POR TU WHATSAPP (Con código de país, ej. 51...)
+    const ADMIN_EMAILS = ['diego@alpha.com', 'luis@alpha.com', 'mau@alpha.com'];
 
+    let usuarioActual = null;
     let listaProductos = [];
-    let filtroActual = 'TODOS';
+    let carritoVenta = [];
+    let comprobanteBase64 = null;
+    let listaVentasCache = [];
+    let listaAsistenciaCache = [];
+    let registroAsistenciaActivo = null;
+    let intervalTimer = null;
+    let miGraficoVentas = null;
+    let categoriaFiltroActual = 'TODOS';
+    let procesandoVenta = false;
 
-    async function cargarCatalogo() {
-      const { data } = await client.from('productos')
-        .select('*')
-        .gt('stock', 0)
-        .neq('tipo', 'Decant Vacío')
-        .order('nombre', { ascending: true });
+    const PUNTO_EQUILIBRIO = 140;
+    const META_DIARIA = 199;
 
-      listaProductos = data || [];
-      renderizar();
+    const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
+
+    function esAdmin() {
+      return usuarioActual && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(usuarioActual.email.toLowerCase());
     }
 
-    function filtrarCat() {
-      renderizar();
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPass').value;
+      
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error) alert('Error al ingresar: ' + error.message);
+      else {
+        usuarioActual = data.user;
+        iniciarApp();
+      }
+    });
+
+    function iniciarApp() {
+      document.getElementById('sec-login').classList.add('hidden');
+      document.getElementById('sec-app').classList.remove('hidden');
+      document.getElementById('userLogged').innerText = `Usuario: ${usuarioActual.email} ${esAdmin() ? ' (ADMIN)' : ''}`;
+      
+      const btnExcel = document.getElementById('btnExportarExcel');
+      const btnAsistenciaExcel = document.getElementById('btnExportarAsistencia');
+      const secCrearProducto = document.getElementById('secCrearProducto');
+
+      if (esAdmin()) {
+        btnExcel.classList.remove('hidden');
+        btnAsistenciaExcel.classList.remove('hidden');
+        secCrearProducto.classList.remove('hidden');
+      } else {
+        btnExcel.classList.add('hidden');
+        btnAsistenciaExcel.classList.add('hidden');
+        secCrearProducto.classList.add('hidden');
+      }
+
+      cargarTodo();
     }
 
-    function filtrarChip(cat, btn) {
-      filtroActual = cat;
+    async function cerrarSesion() {
+      if (intervalTimer) clearInterval(intervalTimer);
+      await client.auth.signOut();
+      location.reload();
+    }
+
+    function mostrarTab(tab) {
+      ['venta', 'stock', 'historial', 'asistencia'].forEach(t => document.getElementById(`tab-${t}`).classList.add('hidden'));
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      if (tab === 'asistencia') {
+        cargarEstadoAsistencia();
+      }
+    }
+
+    async function cargarTodo() {
+      const { data: prods } = await client.from('productos').select('*').order('id', { ascending: false });
+      listaProductos = prods || [];
+      renderizarStock();
+      actualizarOpcionesVenta();
+      cargarHistorial();
+      cargarEstadoAsistencia();
+    }
+
+    function toggleCamposStock() {
+      const stkTipoVal = document.getElementById('stkTipo').value;
+      const esVacio = stkTipoVal === 'Decant Vacío';
+      
+      document.getElementById('grpTamanoVacios').classList.toggle('hidden', !esVacio);
+      document.getElementById('grpTamanoBotella').classList.toggle('hidden', esVacio);
+      
+      document.getElementById('lblPrecioStock').innerText = esVacio ? 'Costo Total del Lote (S/)' : 'Costo Comprado (S/)';
+      document.getElementById('lblCantidadStock').innerText = esVacio ? 'Cantidad de envases en el Lote' : 'Cantidad inicial de frascos';
+    }
+
+    function filtrarInventario() {
+      renderizarStock();
+    }
+
+    function filtrarCategoriaChip(cat, btnEl) {
+      categoriaFiltroActual = cat;
       document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderizar();
+      btnEl.classList.add('active');
+      renderizarStock();
     }
 
-    function renderizar() {
+    function renderizarStock() {
       const query = document.getElementById('inputBusqueda').value.toLowerCase().trim();
+
+      document.getElementById('metrTotal').innerText = listaProductos.length;
+      document.getElementById('metrBajo').innerText = listaProductos.filter(p => p.stock > 0 && p.stock <= 4).length;
+      document.getElementById('metrAgotado').innerText = listaProductos.filter(p => p.stock === 0).length;
+
       let filtrados = listaProductos.filter(p => p.nombre.toLowerCase().includes(query));
 
-      if (filtroActual === 'SELLADO') filtrados = filtrados.filter(p => p.tipo === 'Perfume Sellado');
-      else if (filtroActual === 'DECANT') filtrados = filtrados.filter(p => p.tipo === 'Perfume para Decant');
+      if (categoriaFiltroActual === 'SELLADO') filtrados = filtrados.filter(p => p.tipo === 'Perfume Sellado');
+      else if (categoriaFiltroActual === 'DECANT') filtrados = filtrados.filter(p => p.tipo === 'Perfume para Decant');
+      else if (categoriaFiltroActual === 'VACIO') filtrados = filtrados.filter(p => p.tipo === 'Decant Vacío');
 
-      const cont = document.getElementById('gridCat');
+      const contGrid = document.getElementById('gridInventario');
       if (!filtrados.length) {
-        cont.innerHTML = '<p style="text-align:center; grid-column: 1/-1; color:var(--muted); padding:30px;">No hay productos disponibles por el momento.</p>';
+        contGrid.innerHTML = '<p class="empty-msg" style="grid-column: 1/-1; text-align:center; padding:20px;">No se encontraron productos en esta categoría.</p>';
         return;
       }
 
-      cont.innerHTML = filtrados.map(p => {
-        const tamanoStr = p.tamano || '100ml';
-        const pvp = parseFloat(p.precio_sugerido || 0).toFixed(2);
-        const mensajeWsp = encodeURIComponent(`Hola ALPHA Perfumes, estoy interesado en consultar sobre: ${p.nombre} (${tamanoStr}).`);
+      contGrid.innerHTML = filtrados.map(p => {
+        let badgeClass = 'badge-ok';
+        let badgeText = `Stock: ${p.stock}`;
+        let barColor = 'var(--success)';
+        let pct = Math.min((p.stock / 10) * 100, 100);
+
+        if (p.stock === 0) {
+          badgeClass = 'badge-zero';
+          badgeText = 'AGOTADO';
+          barColor = 'var(--danger)';
+          pct = 100;
+        } else if (p.stock <= 4) {
+          badgeClass = 'badge-low';
+          badgeText = `Bajo: ${p.stock}`;
+          barColor = 'var(--warning)';
+        }
+
+        const tamanoPerfume = p.tamano || '100ml';
+        const mlBase = parseInt(tamanoPerfume) || 100;
+
+        let labelTipo = `SELLADO (${tamanoPerfume})`;
+        if (p.tipo === 'Perfume para Decant') labelTipo = `ABIERTO (${tamanoPerfume})`;
+        else if (p.tipo === 'Decant Vacío') labelTipo = `ENVASE (${p.tamano ? p.tamano : ''})`;
+
+        const costoBaseVal = parseFloat(p.precio || 0);
+        const precioSugeridoVal = parseFloat(p.precio_sugerido || 0);
 
         return `
           <div class="product-card">
             <div class="product-card-img-wrapper">
               <img src="${p.imagen_url || IMG_DEFAULT}" class="product-card-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-              <span class="badge-type">${p.tipo === 'Perfume Sellado' ? `SELLADO (${tamanoStr})` : `DECANT DE ${tamanoStr}`}</span>
+              <span class="badge product-card-badge">${labelTipo}</span>
             </div>
             <div class="product-card-body">
               <div>
-                <h3 class="product-title">${p.nombre}</h3>
-                <div class="product-price">S/ ${pvp}</div>
+                <h4 class="product-card-title">${p.nombre}</h4>
+                <div style="margin-bottom:6px; font-size:0.83rem;">
+                  Precio Venta (PVP): <strong style="color:var(--gold-light);">S/ ${precioSugeridoVal.toFixed(2)}</strong>
+                </div>
+                ${esAdmin() ? `
+                  <div class="product-card-meta">
+                    ${p.tipo === 'Decant Vacío' ? 
+                      `Costo Unit/Envase: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong>` : 
+                      `Costo Botella: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong> <br><span style="font-size:0.7rem; color:var(--muted);">(Costo/ml: S/ ${(costoBaseVal/mlBase).toFixed(2)})</span>`
+                    }
+                  </div>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="badge ${badgeClass}">${badgeText}</span>
+                  <span style="font-size:0.75rem; color:var(--muted);">${p.stock} unids.</span>
+                </div>
+                <div class="product-card-stock-bar">
+                  <div class="product-card-stock-fill" style="width: ${pct}%; background: ${barColor};"></div>
+                </div>
               </div>
-              <a href="https://wa.me/${NUMERO_WSP}?text=${mensajeWsp}" target="_blank" class="btn-wsp">
-                📲 Consultar por WhatsApp
-              </a>
+
+              ${esAdmin() ? `
+                <div class="product-card-actions">
+                  <button onclick="sumarStockOLote(${p.id})" class="btn-add">➕ Ingresar Nuevo Lote / Stock</button>
+                  ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
+                  ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
+                </div>
+              ` : ''}
             </div>
           </div>
         `;
       }).join('');
     }
 
-    cargarCatalogo();
+    async function sumarStockOLote(id) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden gestionar el inventario.');
+
+      const producto = listaProductos.find(p => p.id === id);
+      if (!producto) return;
+
+      if (producto.tipo === 'Decant Vacío') {
+        const cantStr = prompt(`📦 INGRESAR NUEVO LOTE DE DECANTS (${producto.nombre} ${producto.tamano || ''})\n\n¿Cuántos envases vienen en el nuevo lote que compraste? (Ej: 112):`);
+        if (!cantStr || isNaN(cantStr) || parseInt(cantStr) <= 0) return;
+        const cantLote = parseInt(cantStr);
+
+        const precioLoteStr = prompt(`💰 Precio TOTAL pagado por ese lote de ${cantLote} envases (S/): (Ej: 75.00)`);
+        if (!precioLoteStr || isNaN(precioLoteStr) || parseFloat(precioLoteStr) < 0) return;
+        const precioLote = parseFloat(precioLoteStr);
+
+        const nuevoCostoUnitario = cantLote > 0 ? (precioLote / cantLote) : parseFloat(producto.precio || 0);
+        const nuevoStockTotal = producto.stock + cantLote;
+
+        const { error } = await client.from('productos').update({
+          stock: nuevoStockTotal,
+          precio: nuevoCostoUnitario
+        }).eq('id', id);
+
+        if (error) alert('Error al actualizar lote: ' + error.message);
+        else {
+          alert(`¡Lote agregado con éxito!\n- Envases agregados: ${cantLote}\n- Nuevo Stock Total: ${nuevoStockTotal}\n- Nuevo Costo Unitario por Envase: S/ ${nuevoCostoUnitario.toFixed(2)}`);
+          cargarTodo();
+        }
+        return;
+      }
+
+      const cantidadStr = prompt(`¿Cuántas botellas/unidades deseas sumar al stock de "${producto.nombre}"?`);
+      if (!cantidadStr || isNaN(cantidadStr) || parseInt(cantidadStr) <= 0) return;
+
+      const precioBotellaStr = prompt(`Costo Comprado en S/ (deja en blanco para mantener S/ ${parseFloat(producto.precio || 0).toFixed(2)}):`, producto.precio);
+      let nuevoPrecio = parseFloat(producto.precio || 0);
+      if (precioBotellaStr && !isNaN(precioBotellaStr) && parseFloat(precioBotellaStr) >= 0) {
+        nuevoPrecio = parseFloat(precioBotellaStr);
+      }
+
+      const pvpStr = prompt(`Precio Sugerido de Venta (PVP) en S/ (deja en blanco para mantener S/ ${parseFloat(producto.precio_sugerido || 0).toFixed(2)}):`, producto.precio_sugerido);
+      let nuevoPVP = parseFloat(producto.precio_sugerido || 0);
+      if (pvpStr && !isNaN(pvpStr) && parseFloat(pvpStr) >= 0) {
+        nuevoPVP = parseFloat(pvpStr);
+      }
+
+      const nuevoStock = producto.stock + parseInt(cantidadStr);
+      const { error } = await client.from('productos').update({ 
+        stock: nuevoStock, 
+        precio: nuevoPrecio,
+        precio_sugerido: nuevoPVP 
+      }).eq('id', id);
+
+      if (error) alert('Error al actualizar stock: ' + error.message);
+      else {
+        alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
+        cargarTodo();
+      }
+    }
+
+    async function abrirPerfumeSellado(idSellado) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
+
+      const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
+      if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
+
+      const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${perfumeSelladoObj.nombre}" (${perfumeSelladoObj.tamano || '100ml'})?\n\n- Se descontará 1 unidad de Perfumes Sellados.\n- Se sumará 1 unidad a "Perfume para Decant".`);
+      if (!confirmar) return;
+
+      const nuevoStockSellado = perfumeSelladoObj.stock - 1;
+      const { error: err1 } = await client.from('productos').update({ stock: nuevoStockSellado }).eq('id', idSellado);
+      if (err1) return alert('Error al actualizar stock sellado: ' + err1.message);
+
+      const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === perfumeSelladoObj.nombre.toLowerCase());
+
+      if (perfumeAbiertoObj) {
+        await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
+      } else {
+        await client.from('productos').insert([{
+          nombre: perfumeSelladoObj.nombre,
+          tipo: 'Perfume para Decant',
+          tamano: perfumeSelladoObj.tamano || '100ml',
+          precio: perfumeSelladoObj.precio,
+          precio_sugerido: perfumeSelladoObj.precio_sugerido,
+          stock: 1,
+          imagen_url: perfumeSelladoObj.imagen_url
+        }]);
+      }
+
+      alert(`¡"${perfumeSelladoObj.nombre}" se abrió correctamente! Quedan ${nuevoStockSellado} sellados.`);
+      cargarTodo();
+    }
+
+    async function marcarComoVacio(id, nombre, stockActual) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
+      if (stockActual <= 0) return alert(`"${nombre}" ya no tiene unidades disponibles.`);
+
+      const confirmar = confirm(`¿Confirmas que se terminó 1 unidad de "${nombre}"?\n\nStock actual: ${stockActual} ➔ Quedarán: ${stockActual - 1}`);
+      if (!confirmar) return;
+
+      const nuevoStock = stockActual - 1;
+      const { error } = await client.from('productos').update({ stock: nuevoStock }).eq('id', id);
+
+      if (error) alert('Error al actualizar: ' + error.message);
+      else {
+        alert(`Se descontó 1 unidad de "${nombre}". Quedan: ${nuevoStock}.`);
+        cargarTodo();
+      }
+    }
+
+    function actualizarOpcionesVenta() {
+      filtrarPerfumesVenta();
+    }
+
+    function filtrarPerfumesVenta() {
+      const itemTipoVal = document.getElementById('itemTipo').value;
+      const query = document.getElementById('itemBuscador').value.toLowerCase().trim();
+      const isDecant = itemTipoVal === 'Decant';
+      
+      document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
+      
+      const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
+      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query));
+      
+      const selectPerfume = document.getElementById('itemPerfume');
+      if (filtrados.length === 0) {
+        selectPerfume.innerHTML = `<option value="">-- Sin resultados disponibles --</option>`;
+      } else {
+        selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} [${p.tamano || '100ml'}] (Stock: ${p.stock})</option>`).join('');
+      }
+
+      mostrarPreviewPerfumeVenta();
+    }
+
+    function mostrarPreviewPerfumeVenta() {
+      const perfumeId = document.getElementById('itemPerfume').value;
+      const cardPreview = document.getElementById('previewPerfumeVenta');
+
+      if (!perfumeId) {
+        cardPreview.classList.add('hidden');
+        document.getElementById('itemPrecio').value = '';
+        return;
+      }
+
+      const perfume = listaProductos.find(p => p.id == perfumeId);
+      if (perfume) {
+        document.getElementById('prevNombre').innerText = `${perfume.nombre} (${perfume.tamano || '100ml'})`;
+        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades | PVP Sugerido: S/ ${parseFloat(perfume.precio_sugerido || 0).toFixed(2)}`;
+        document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
+        cardPreview.classList.remove('hidden');
+
+        // COLOCAR PRECIO SUGERIDO AUTOMÁTICAMENTE
+        if (perfume.precio_sugerido && parseFloat(perfume.precio_sugerido) > 0) {
+          document.getElementById('itemPrecio').value = parseFloat(perfume.precio_sugerido).toFixed(2);
+        } else {
+          document.getElementById('itemPrecio').value = '';
+        }
+      } else {
+        cardPreview.classList.add('hidden');
+      }
+    }
+
+    function abrirModalQRYape() {
+      document.getElementById('modalQRYape').classList.remove('hidden');
+    }
+
+    function cerrarModalQRYape() {
+      document.getElementById('modalQRYape').classList.add('hidden');
+    }
+
+    function previsualizarComprobante(e) {
+      const file = e.target.files[0];
+      if (!file) {
+        comprobanteBase64 = null;
+        document.getElementById('previewComprobanteContainer').classList.add('hidden');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          comprobanteBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          document.getElementById('imgComprobantePreview').src = comprobanteBase64;
+          document.getElementById('previewComprobanteContainer').classList.remove('hidden');
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function agregarAlCarrito() {
+      const perfumeId = document.getElementById('itemPerfume').value;
+      const tipoVenta = document.getElementById('itemTipo').value;
+      const tamanoDecant = document.getElementById('itemTamano').value;
+      const cantidad = parseInt(document.getElementById('itemCantidad').value) || 1;
+      const precioVentaCobrado = parseFloat(document.getElementById('itemPrecio').value);
+
+      if (!perfumeId) return alert('Selecciona un perfume válido.');
+      if (isNaN(precioVentaCobrado) || precioVentaCobrado <= 0) return alert('Ingresa un precio cobrado válido mayor a 0.');
+
+      const perfumeObj = listaProductos.find(p => p.id == perfumeId);
+      if (!perfumeObj) return alert('Producto no encontrado en inventario.');
+
+      if (tipoVenta === 'Perfume Sellado' && perfumeObj.stock < cantidad) {
+        return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
+      }
+
+      let costoUnitarioFinal = 0;
+
+      if (tipoVenta === 'Perfume Sellado') {
+        costoUnitarioFinal = parseFloat(perfumeObj.precio || 0);
+      } else {
+        const precioBotella = parseFloat(perfumeObj.precio || 0);
+        const mlBotellaBase = parseInt(perfumeObj.tamano) || 100;
+        const costoPorMl = precioBotella / mlBotellaBase;
+        const mlVendido = parseInt(tamanoDecant) || 2;
+        
+        const costoLiquido = costoPorMl * mlVendido;
+
+        const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
+        const costoEnvaseVacio = vacioObj ? parseFloat(vacioObj.precio || 0) : 0;
+
+        costoUnitarioFinal = costoLiquido + costoEnvaseVacio;
+
+        if (costoUnitarioFinal >= precioVentaCobrado) {
+          costoUnitarioFinal = precioVentaCobrado * 0.50;
+        }
+      }
+
+      const item = {
+        producto_id: perfumeObj.id,
+        nombre: perfumeObj.nombre,
+        tipo: tipoVenta,
+        tamano: tipoVenta === 'Decant' ? tamanoDecant : (perfumeObj.tamano || 'Frasco Entero'),
+        cantidad: cantidad,
+        precio_unitario: precioVentaCobrado,
+        costo_unitario: costoUnitarioFinal,
+        subtotal: cantidad * precioVentaCobrado,
+        costo_total: cantidad * costoUnitarioFinal,
+        imagen_url: perfumeObj.imagen_url,
+        es_regalo: false
+      };
+
+      carritoVenta.push(item);
+
+      if (tipoVenta === 'Perfume Sellado') {
+        const quiereRegalo = confirm(`🎁 ¡PROMOCIÓN DE REGALO!\n\n¿Deseas agregar un Decant de 2ml DE REGALO para esta compra de "${perfumeObj.nombre}"?`);
+        if (quiereRegalo) {
+          ofrecerRegaloDecant2ml();
+        }
+      }
+
+      document.getElementById('itemPrecio').value = '';
+      document.getElementById('itemCantidad').value = '1';
+      renderizarCarrito();
+    }
+
+    function ofrecerRegaloDecant2ml() {
+      const perfumesAbiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0);
+      if (!perfumesAbiertos.length) {
+        alert('⚠️ No hay perfumes abiertos disponibles para preparar el decant de regalo.');
+        return;
+      }
+
+      const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === '2ml');
+      let costoVacio = 0;
+      if (vacioRegalo) {
+        costoVacio = parseFloat(vacioRegalo.precio || 0);
+        if (vacioRegalo.stock < 1) {
+          alert('⚠️ Nota: No quedan envases vacíos de 2ml registrados en el inventario para el regalo.');
+        }
+      }
+
+      let menuOpciones = "Selecciona el número del perfume que regalarás en 2ml:\n\n";
+      perfumesAbiertos.forEach((p, idx) => {
+        menuOpciones += `${idx + 1}. ${p.nombre} (${p.tamano || '100ml'})\n`;
+      });
+
+      const eleccion = prompt(menuOpciones);
+      const num = parseInt(eleccion);
+
+      if (isNaN(num) || num < 1 || num > perfumesAbiertos.length) {
+        alert('Opción inválida. No se agregó el regalito.');
+        return;
+      }
+
+      const perfumeRegalo = perfumesAbiertos[num - 1];
+      const mlBase = parseInt(perfumeRegalo.tamano) || 100;
+      const costoLiquido2ml = (parseFloat(perfumeRegalo.precio || 0) / mlBase) * 2;
+      const costoRegaloTotal = costoLiquido2ml + costoVacio;
+
+      const regaloItem = {
+        producto_id: perfumeRegalo.id,
+        nombre: `🎁 REGALO: Decant 2ml (${perfumeRegalo.nombre})`,
+        tipo: 'Decant',
+        tamano: '2ml',
+        cantidad: 1,
+        precio_unitario: 0.00,
+        costo_unitario: costoRegaloTotal,
+        subtotal: 0.00,
+        costo_total: costoRegaloTotal,
+        imagen_url: perfumeRegalo.imagen_url,
+        es_regalo: true
+      };
+
+      carritoVenta.push(regaloItem);
+      alert(`¡Decant de 2ml de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
+    }
+
+    function eliminarDelCarrito(index) {
+      carritoVenta.splice(index, 1);
+      renderizarCarrito();
+    }
+
+    function renderizarCarrito() {
+      const cont = document.getElementById('listaCarrito');
+      if (!carritoVenta.length) {
+        cont.innerHTML = '<p class="empty-msg">El carrito está vacío. Agrega productos arriba.</p>';
+        document.getElementById('txtTotalVenta').innerText = 'Total a cobrar: S/ 0.00';
+        return;
+      }
+
+      let total = 0;
+      cont.innerHTML = carritoVenta.map((item, idx) => {
+        total += item.subtotal;
+        return `
+          <div class="cart-item">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${item.imagen_url || IMG_DEFAULT}" style="width:36px; height:36px; object-fit:cover; border-radius:5px; border:1px solid var(--border);" onerror="this.src='${IMG_DEFAULT}'">
+              <div>
+                <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge ${item.es_regalo ? 'badge-gift' : ''}">${item.es_regalo ? '🎁 GRATIS' : `${item.tipo} -${item.tamano}`}</span><br>
+                <span style="color:var(--muted); font-size:0.75rem;">Cobrado: S/ ${item.precio_unitario.toFixed(2)} | Costo Estimado: S/ ${item.costo_unitario.toFixed(2)}</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong style="color:${item.es_regalo ? '#a3e6af' : 'var(--gold-light)'};">S/ ${item.subtotal.toFixed(2)}</strong>
+              <button type="button" onclick="eliminarDelCarrito(${idx})" class="btn-del">❌</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('txtTotalVenta').innerText = `Total a cobrar: S/ ${total.toFixed(2)}`;
+    }
+
+    document.getElementById('formStock').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden crear nuevos productos.');
+
+      const tipo = document.getElementById('stkTipo').value;
+      const nombreInput = document.getElementById('stkNombre').value.trim();
+      const imagenInput = document.getElementById('stkImagen').value.trim();
+      const cantidadReg = parseInt(document.getElementById('stkCantidad').value) || 1;
+      const precioMontoInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
+      const precioSugeridoInput = parseFloat(document.getElementById('stkPrecioSugerido').value) || 0;
+
+      let tamanoValor = null;
+      if (tipo === 'Decant Vacío') {
+        tamanoValor = document.getElementById('stkTamanoVacios').value;
+      } else {
+        tamanoValor = document.getElementById('stkTamanoBotella').value;
+      }
+
+      let costoUnitarioCalculado = precioMontoInput;
+      if (tipo === 'Decant Vacío' && cantidadReg > 0) {
+        costoUnitarioCalculado = precioMontoInput / cantidadReg;
+      }
+
+      const nuevo = {
+        nombre: nombreInput,
+        tipo: tipo,
+        tamano: tamanoValor,
+        precio: costoUnitarioCalculado,
+        precio_sugerido: precioSugeridoInput,
+        stock: cantidadReg,
+        imagen_url: imagenInput || null
+      };
+
+      const { error } = await client.from('productos').insert([nuevo]);
+      if (error) alert('Error: ' + error.message);
+      else {
+        alert('Registrado correctamente');
+        document.getElementById('formStock').reset();
+        toggleCamposStock();
+        cargarTodo();
+      }
+    });
+
+    document.getElementById('formVenta').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (procesandoVenta) return;
+      if (!carritoVenta.length) return alert('¡Agrega al menos un producto al carrito antes de procesar la venta!');
+
+      const btnSubmit = document.getElementById('btnSubmitVenta');
+      
+      try {
+        procesandoVenta = true;
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = '⏳ Procesando Venta...';
+
+        const canal = document.getElementById('vtaCanal').value;
+        const metodoPago = document.getElementById('vtaMetodoPago').value;
+        const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
+        const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
+        
+        const gananciaNetaVenta = totalMonto - totalCosto;
+
+        for (const item of carritoVenta) {
+          if (item.tipo === 'Perfume Sellado') {
+            const perf = listaProductos.find(p => p.id === item.producto_id);
+            if (perf) {
+              await client.from('productos').update({ stock: Math.max(0, perf.stock - item.cantidad) }).eq('id', perf.id);
+            }
+          } else {
+            const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+            if (vacioObj && vacioObj.stock >= item.cantidad) {
+              await client.from('productos').update({ stock: Math.max(0, vacioObj.stock - item.cantidad) }).eq('id', vacioObj.id);
+            }
+          }
+        }
+
+        const resumenNombres = carritoVenta.map(i => `${i.cantidad}x ${i.nombre} (${i.tamano})`).join(', ');
+        const primerTipo = carritoVenta[0] ? carritoVenta[0].tipo : 'Venta Mixta';
+
+        const venta = {
+          producto_nombre: resumenNombres,
+          tipo_venta: primerTipo,
+          monto_total: totalMonto,
+          ganancia_neta: gananciaNetaVenta,
+          vendedor_email: usuarioActual.email,
+          ubicacion_venta: `${canal} (${metodoPago})`,
+          detalles: carritoVenta,
+          comprobante_url: comprobanteBase64 || null
+        };
+
+        const { error } = await client.from('ventas').insert([venta]);
+        if (error) {
+          alert('Error al registrar la venta: ' + error.message);
+        } else {
+          alert('¡Venta realizada con éxito!');
+          carritoVenta = [];
+          comprobanteBase64 = null;
+          document.getElementById('vtaFotoComprobante').value = '';
+          document.getElementById('previewComprobanteContainer').classList.add('hidden');
+          renderizarCarrito();
+          document.getElementById('itemBuscador').value = '';
+          actualizarOpcionesVenta();
+          cargarTodo();
+        }
+      } catch (err) {
+        alert('Ocurrió un error inesperado al procesar la venta: ' + err.message);
+      } finally {
+        procesandoVenta = false;
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = '✅ Procesar Venta Completa';
+      }
+    });
+
+    async function cargarHistorial() {
+      const { data: ventas } = await client.from('ventas').select('*').order('fecha', { ascending: false });
+      listaVentasCache = ventas || [];
+      
+      const contenedor = document.getElementById('listaVentas');
+      
+      if (!ventas || !ventas.length) {
+        contenedor.innerHTML = '<p class="empty-msg">No hay ventas registradas aún.</p>';
+        renderizarGraficoVentas({});
+        return;
+      }
+
+      let catalogo = listaProductos;
+      if (!catalogo || !catalogo.length) {
+        const { data: prods } = await client.from('productos').select('*');
+        catalogo = prods || [];
+        listaProductos = catalogo;
+      }
+
+      const esUsuarioAdmin = esAdmin();
+      const grupos = {};
+      
+      ventas.forEach((v, index) => {
+        const fechaObj = new Date(v.fecha);
+        const ano = fechaObj.getFullYear();
+        const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+        const dia = String(fechaObj.getDate()).padStart(2, '0');
+        const claveFechaLocal = `${ano}-${mes}-${dia}`;
+
+        if (!grupos[claveFechaLocal]) {
+          grupos[claveFechaLocal] = {
+            fechaFormateada: fechaObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            etiquetaCorta: fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
+            ventas: [],
+            totalGanado: 0,
+            gananciaNetaTotal: 0
+          };
+        }
+        
+        let ganNeta = 0;
+        const montoVenta = parseFloat(v.monto_total || 0);
+
+        if (v.ganancia_neta !== undefined && v.ganancia_neta !== null && parseFloat(v.ganancia_neta) > 0) {
+          ganNeta = parseFloat(v.ganancia_neta);
+        } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
+          let costoTotalCalculado = 0;
+
+          v.detalles.forEach(item => {
+            let cUnit = parseFloat(item.costo_unitario || 0);
+            const cant = parseInt(item.cantidad) || 1;
+            const pUnit = parseFloat(item.precio_unitario || 0);
+            
+            if (cUnit === 0 || cUnit >= pUnit) {
+              const prodObj = catalogo.find(p => p.id === item.producto_id) || 
+                              catalogo.find(p => p.nombre.toLowerCase() === (item.nombre || '').toLowerCase());
+              
+              if (prodObj) {
+                const precioBotella = parseFloat(prodObj.precio || 0);
+                const mlBotellaBase = parseInt(prodObj.tamano) || 100;
+
+                if (item.tipo === 'Decant') {
+                  const mlVendido = parseInt(item.tamano) || 2;
+                  const costoLiquido = (precioBotella / mlBotellaBase) * mlVendido;
+                  const envaseObj = catalogo.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+                  const costoEnvase = envaseObj ? parseFloat(envaseObj.precio || 0) : 0;
+
+                  cUnit = costoLiquido + costoEnvase;
+                } else {
+                  cUnit = precioBotella;
+                }
+              }
+
+              if (cUnit >= pUnit && pUnit > 0) {
+                cUnit = pUnit * 0.50;
+              }
+            }
+            costoTotalCalculado += cUnit * cant;
+          });
+
+          ganNeta = montoVenta - costoTotalCalculado;
+          if (ganNeta < 0) {
+            ganNeta = montoVenta * 0.50;
+          }
+        } else {
+          ganNeta = montoVenta * 0.50;
+        }
+
+        grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index, gananciaNetaCalculada: ganNeta });
+        grupos[claveFechaLocal].totalGanado += montoVenta;
+        grupos[claveFechaLocal].gananciaNetaTotal += ganNeta;
+      });
+
+      renderizarGraficoVentas(grupos);
+
+      const clavesOrdenadas = Object.keys(grupos).sort().reverse();
+
+      contenedor.innerHTML = clavesOrdenadas.map((clave, dayIdx) => {
+        const grupo = grupos[clave];
+        const numVentas = grupo.ventas.length;
+        const totalVentaSoles = grupo.totalGanado.toFixed(2);
+        const gananciaNetaSoles = grupo.gananciaNetaTotal.toFixed(2);
+        const esPrimerDia = dayIdx === 0;
+
+        const htmlVentas = grupo.ventas.map(item => {
+          const v = item.venta;
+          const idx = item.indexGlobal;
+          const gNeta = item.gananciaNetaCalculada.toFixed(2);
+          
+          return `
+            <div class="stock-item" style="margin-top:8px; padding:10px; background:rgba(2,19,38,.5); border-radius:8px; border:1px solid var(--border);">
+              <div>
+                <p style="margin:0;font-size:.72rem; color:var(--muted);">${new Date(v.fecha).toLocaleTimeString()}</p>
+                <h4 style="margin:5px 0; color:var(--ivory);">${v.producto_nombre}</h4>
+                <p class="price" style="margin:0;font-size:.83rem;">
+                  Total Venta: S/ ${parseFloat(v.monto_total).toFixed(2)}
+                  ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: S/ ${gNeta}</span>` : ''}
+                </p>
+                <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                  ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="padding:4px 10px; font-size:0.75rem; width:auto; margin:0;">📸 Ver Captura</button>` : ''}
+                  ${esUsuarioAdmin ? `<button type="button" onclick="deshacerVenta(${v.id})" class="btn-undo">↩️ Deshacer Venta</button>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="day-group">
+            <button type="button" class="day-header" onclick="toggleDiaHistorial('${clave}')">
+              <span class="day-header-title">📋 Cierre de Caja: ${grupo.fechaFormateada}</span>
+              <span class="day-header-summary">
+                <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong><br>
+                <span>Venta Total: <strong>S/ ${totalVentaSoles}</strong></span>
+                ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Ganancia Neta: <strong>S/ ${gananciaNetaSoles}</strong></span>` : ''}
+                <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
+              </span>
+            </button>
+            <div id="content-${clave}" class="day-content ${esPrimerDia ? '' : 'hidden'}">
+              ${htmlVentas}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function deshacerVenta(idVenta) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden deshacer o anular ventas.');
+
+      const ventaObj = listaVentasCache.find(v => v.id === idVenta);
+      if (!ventaObj) return alert('No se encontró el registro de la venta.');
+
+      const confirmar = confirm(`⚠️ ¿Confirmas que deseas DESHACER y ANULAR la venta #${idVenta}?\n\n- Se eliminará del historial.\n- Se devolverá automáticamente el stock a los productos/envases correspondientes.`);
+      if (!confirmar) return;
+
+      if (Array.isArray(ventaObj.detalles)) {
+        for (const item of ventaObj.detalles) {
+          if (item.tipo === 'Perfume Sellado') {
+            const perf = listaProductos.find(p => p.id === item.producto_id);
+            if (perf) {
+              await client.from('productos').update({ stock: perf.stock + item.cantidad }).eq('id', perf.id);
+            }
+          } else {
+            const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+            if (vacioObj) {
+              await client.from('productos').update({ stock: vacioObj.stock + item.cantidad }).eq('id', vacioObj.id);
+            }
+          }
+        }
+      }
+
+      const { error } = await client.from('ventas').delete().eq('id', idVenta);
+      if (error) {
+        alert('Error al deshacer la venta: ' + error.message);
+      } else {
+        alert('¡Venta anulada correctamente! El stock fue devuelto al inventario.');
+        cargarTodo();
+      }
+    }
+
+    function renderizarGraficoVentas(grupos) {
+      const ctx = document.getElementById('chartVentasDiarias');
+      if (!ctx) return;
+
+      const esUsuarioAdmin = esAdmin();
+      const txtTitulo = document.getElementById('txtTituloGrafico');
+      
+      if (txtTitulo) {
+        txtTitulo.innerText = esUsuarioAdmin ? '📈 Rendimiento Diario (Ganancia Neta vs Metas)' : '📈 Rendimiento Diario de Ventas';
+      }
+
+      const clavesOrdenadas = Object.keys(grupos).sort();
+      const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
+      const dataGanancias = clavesOrdenadas.map(c => esUsuarioAdmin ? grupos[c].gananciaNetaTotal : grupos[c].totalGanado);
+
+      const coloresBarras = dataGanancias.map(valor => {
+        if (valor >= META_DIARIA) return '#85b88f';
+        if (valor >= PUNTO_EQUILIBRIO) return '#f1c36d';
+        return '#d99076';
+      });
+
+      if (miGraficoVentas) {
+        miGraficoVentas.destroy();
+      }
+
+      miGraficoVentas = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: esUsuarioAdmin ? 'Ganancia Neta Diaria (S/)' : 'Ventas Totales (S/)',
+            data: dataGanancias,
+            backgroundColor: coloresBarras,
+            borderColor: 'rgba(226, 177, 86, 0.6)',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` ${esUsuarioAdmin ? 'Ganancia Neta' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                lineEquilibrio: {
+                  type: 'line',
+                  yMin: PUNTO_EQUILIBRIO,
+                  yMax: PUNTO_EQUILIBRIO,
+                  borderColor: '#efc66e',
+                  borderWidth: 2,
+                  borderDash: [6, 6],
+                  label: {
+                    display: true,
+                    content: `P. Equilibrio: S/ ${PUNTO_EQUILIBRIO}`,
+                    position: 'start',
+                    backgroundColor: 'rgba(3, 26, 52, 0.8)',
+                    color: '#efc66e',
+                    font: { size: 10 }
+                  }
+                },
+                lineMeta: {
+                  type: 'line',
+                  yMin: META_DIARIA,
+                  yMax: META_DIARIA,
+                  borderColor: '#85b88f',
+                  borderWidth: 2,
+                  borderDash: [4, 4],
+                  label: {
+                    display: true,
+                    content: `Meta: S/ ${META_DIARIA}`,
+                    position: 'end',
+                    backgroundColor: 'rgba(3, 26, 52, 0.8)',
+                    color: '#85b88f',
+                    font: { size: 10 }
+                  }
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#b8c6d5' },
+              grid: { color: 'rgba(246,240,231,0.08)' }
+            },
+            x: {
+              ticks: { color: '#b8c6d5' },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    function toggleDiaHistorial(claveFecha) {
+      const el = document.getElementById(`content-${claveFecha}`);
+      const arrow = document.getElementById(`arrow-${claveFecha}`);
+      if (el) {
+        const estaOculto = el.classList.toggle('hidden');
+        if (arrow) arrow.innerText = estaOculto ? '▼' : '▲';
+      }
+    }
+
+    function abrirModalComprobante(idx) {
+      const venta = listaVentasCache[idx];
+      if (venta && venta.comprobante_url) {
+        document.getElementById('modalImgComprobante').src = venta.comprobante_url;
+        document.getElementById('modalComprobante').classList.remove('hidden');
+      }
+    }
+
+    function cerrarModalComprobante() {
+      document.getElementById('modalComprobante').classList.add('hidden');
+      document.getElementById('modalImgComprobante').src = '';
+    }
+
+    function exportarExcel() {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el archivo de ventas.');
+      if (!listaVentasCache || !listaVentasCache.length) return alert('No hay ventas registradas para exportar.');
+      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
+
+      const datosExcel = [
+        ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Ganancia Neta (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
+      ];
+
+      listaVentasCache.forEach(v => {
+        let ganNeta = 0;
+        if (v.ganancia_neta !== undefined && v.ganancia_neta !== null) {
+          ganNeta = parseFloat(v.ganancia_neta);
+        } else if (Array.isArray(v.detalles) && v.detalles.length > 0) {
+          let costoTotalDetalles = 0;
+          v.detalles.forEach(item => {
+            let cUnit = parseFloat(item.costo_unitario || 0);
+            if (cUnit === 0 && item.producto_id) {
+              const prod = listaProductos.find(p => p.id === item.producto_id);
+              if (prod) cUnit = parseFloat(prod.precio || 0);
+            }
+            costoTotalDetalles += cUnit * (parseInt(item.cantidad) || 1);
+          });
+          ganNeta = parseFloat(v.monto_total || 0) - costoTotalDetalles;
+        } else {
+          ganNeta = parseFloat(v.monto_total || 0);
+        }
+
+        datosExcel.push([
+          v.id || '',
+          new Date(v.fecha).toLocaleString(),
+          v.producto_nombre || '',
+          parseFloat(v.monto_total || 0),
+          ganNeta,
+          v.vendedor_email || '',
+          v.ubicacion_venta || '',
+          v.comprobante_url ? 'SÍ' : 'NO'
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(datosExcel);
+      const colWidths = datosExcel[0].map((col, colIdx) => {
+        let maxLen = col.toString().length;
+        datosExcel.forEach(row => {
+          const val = row[colIdx] ? row[colIdx].toString() : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 60) };
+      });
+      ws['!cols'] = colWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${fechaHoy}.xlsx`);
+    }
+
+    async function cargarEstadoAsistencia() {
+      if (!usuarioActual) return;
+
+      const { data } = await client.from('asistencia')
+        .select('*')
+        .eq('vendedor_email', usuarioActual.email)
+        .is('fecha_salida', null)
+        .order('fecha_ingreso', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        registroAsistenciaActivo = data[0];
+        document.getElementById('txtEstadoJornada').innerText = `🟢 En jornada laboral desde: ${new Date(registroAsistenciaActivo.fecha_ingreso).toLocaleTimeString()}`;
+        document.getElementById('btnMarcarIngreso').classList.add('hidden');
+        document.getElementById('btnMarcarSalida').classList.remove('hidden');
+        iniciarCronometro(new Date(registroAsistenciaActivo.fecha_ingreso));
+      } else {
+        registroAsistenciaActivo = null;
+        if (intervalTimer) clearInterval(intervalTimer);
+        document.getElementById('txtEstadoJornada').innerText = '🔴 Fuera de turno de trabajo';
+        document.getElementById('timerDisplay').innerText = '00:00:00';
+        document.getElementById('btnMarcarIngreso').classList.remove('hidden');
+        document.getElementById('btnMarcarSalida').classList.add('hidden');
+      }
+
+      cargarHistorialAsistencia();
+    }
+
+    function iniciarCronometro(fechaIngreso) {
+      if (intervalTimer) clearInterval(intervalTimer);
+      
+      function actualizar() {
+        const ahora = new Date();
+        const diffMs = ahora - fechaIngreso;
+        const totalSegs = Math.floor(diffMs / 1000);
+        
+        const hrs = String(Math.floor(totalSegs / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((totalSegs % 3600) / 60)).padStart(2, '0');
+        const segs = String(totalSegs % 60).padStart(2, '0');
+        
+        document.getElementById('timerDisplay').innerText = `${hrs}:${mins}:${segs}`;
+      }
+
+      actualizar();
+      intervalTimer = setInterval(actualizar, 1000);
+    }
+
+    async function marcarIngresoTrabajo() {
+      const confirmar = confirm(`¿Confirmas que estás INICIANDO tu jornada laboral como ${usuarioActual.email}?`);
+      if (!confirmar) return;
+
+      const nuevoRegistro = {
+        vendedor_email: usuarioActual.email,
+        fecha_ingreso: new Date().toISOString()
+      };
+
+      const { error } = await client.from('asistencia').insert([nuevoRegistro]);
+      if (error) alert('Error al marcar ingreso: ' + error.message);
+      else {
+        alert('¡Jornada de trabajo iniciada con éxito!');
+        cargarEstadoAsistencia();
+      }
+    }
+
+    async function marcarSalidaTrabajo() {
+      if (!registroAsistenciaActivo) return;
+
+      const fechaIngreso = new Date(registroAsistenciaActivo.fecha_ingreso);
+      const fechaSalida = new Date();
+      const horasTrabajadas = ((fechaSalida - fechaIngreso) / (1000 * 60 * 60)).toFixed(2);
+
+      const confirmar = confirm(`¿Confirmas que deseas MARCAR TU SALIDA?\n\nTiempo total aproximado: ${horasTrabajadas} horas.`);
+      if (!confirmar) return;
+
+      const { error } = await client.from('asistencia').update({
+        fecha_salida: fechaSalida.toISOString(),
+        horas_trabajadas: parseFloat(horasTrabajadas)
+      }).eq('id', registroAsistenciaActivo.id);
+
+      if (error) alert('Error al marcar salida: ' + error.message);
+      else {
+        alert(`¡Salida registrada! Trabajaste un total de ${horasTrabajadas} hrs.`);
+        cargarEstadoAsistencia();
+      }
+    }
+
+    async function cargarHistorialAsistencia() {
+      let query = client.from('asistencia').select('*').order('fecha_ingreso', { ascending: false }).limit(20);
+      
+      if (!esAdmin()) {
+        query = query.eq('vendedor_email', usuarioActual.email);
+      }
+
+      const { data } = await query;
+      listaAsistenciaCache = data || [];
+      const contenedor = document.getElementById('listaAsistencia');
+
+      if (!listaAsistenciaCache.length) {
+        contenedor.innerHTML = '<p class="empty-msg">No hay registros de asistencia aún.</p>';
+        return;
+      }
+
+      contenedor.innerHTML = listaAsistenciaCache.map(a => `
+        <div class="stock-item">
+          <div>
+            <span class="badge">${a.vendedor_email}</span>
+            <p style="margin:5px 0 2px; font-size:0.8rem;">Entrada: <strong>${new Date(a.fecha_ingreso).toLocaleString()}</strong></p>
+            <p style="margin:0; font-size:0.8rem;">Salida: <strong>${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '<span style="color:var(--gold-light);">En Curso...</span>'}</strong></p>
+          </div>
+          <div style="text-align:right;">
+            <p class="price" style="margin:0; font-size:0.9rem;">${a.horas_trabajadas ? `${a.horas_trabajadas} hrs` : 'Trabajando'}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function exportarAsistenciaExcel() {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el reporte de asistencia.');
+      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay datos de asistencia para exportar.');
+
+      const datosExcel = [
+        ["ID", "Trabajador / Email", "Fecha/Hora Entrada", "Fecha/Hora Salida", "Horas Trabajadas"]
+      ];
+
+      listaAsistenciaCache.forEach(a => {
+        datosExcel.push([
+          a.id || '',
+          a.vendedor_email || '',
+          new Date(a.fecha_ingreso).toLocaleString(),
+          a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : 'EN CURSO',
+          a.horas_trabajadas ? parseFloat(a.horas_trabajadas) : 0
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(datosExcel);
+      ws['!cols'] = [{ wch: 8 }, { wch: 25 }, { wch: 22 }, { wch: 22 }, { wch: 18 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
+
+      const fechaHoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Reporte_Asistencia_ALPHA_${fechaHoy}.xlsx`);
+    }
   </script>
 </body>
 </html>
