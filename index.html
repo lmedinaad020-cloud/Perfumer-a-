@@ -593,9 +593,11 @@
 
               ${esAdmin() ? `
                 <div class="product-card-actions">
+                  <button onclick="editarProducto(${p.id})" class="btn-sec" style="padding:4px 8px; font-size:0.75rem;">✏️ Editar Producto</button>
                   <button onclick="sumarStockOLote(${p.id})" class="btn-add">➕ Ingresar Nuevo Lote / Stock</button>
                   ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
                   ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
+                  <button onclick="eliminarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\\'")}')" class="btn-del" style="margin-top:2px;">🗑️ Eliminar Producto</button>
                 </div>
               ` : ''}
             </div>
@@ -695,6 +697,63 @@
 
       alert(`¡"${perfumeSelladoObj.nombre}" se abrió correctamente! Quedan ${nuevoStockSellado} sellados.`);
       cargarTodo();
+    }
+
+    async function editarProducto(id) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden editar productos.');
+
+      const prod = listaProductos.find(p => p.id === id);
+      if (!prod) return;
+
+      const nuevoNombre = prompt("Editar nombre:", prod.nombre);
+      if (nuevoNombre === null) return;
+
+      const nuevoStockStr = prompt("Editar stock actual:", prod.stock);
+      if (nuevoStockStr === null) return;
+      const nuevoStock = parseInt(nuevoStockStr);
+
+      const nuevoPrecioStr = prompt("Editar costo comprado (S/):", prod.precio);
+      if (nuevoPrecioStr === null) return;
+      const nuevoPrecio = parseFloat(nuevoPrecioStr);
+
+      const nuevoPVPStr = prompt("Editar precio sugerido PVP (S/):", prod.precio_sugerido);
+      if (nuevoPVPStr === null) return;
+      const nuevoPVP = parseFloat(nuevoPVPStr);
+
+      const nuevaImagen = prompt("Editar URL de imagen:", prod.imagen_url || "");
+      if (nuevaImagen === null) return;
+
+      if (isNaN(nuevoStock) || isNaN(nuevoPrecio) || isNaN(nuevoPVP)) {
+        return alert("Por favor ingresa valores numéricos válidos.");
+      }
+
+      const { error } = await client.from('productos').update({
+        nombre: nuevoNombre.trim(),
+        stock: nuevoStock,
+        precio: nuevoPrecio,
+        precio_sugerido: nuevoPVP,
+        imagen_url: nuevaImagen.trim() || null
+      }).eq('id', id);
+
+      if (error) alert('Error al editar producto: ' + error.message);
+      else {
+        alert('¡Producto actualizado correctamente!');
+        cargarTodo();
+      }
+    }
+
+    async function eliminarProducto(id, nombre) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden eliminar productos.');
+
+      const confirmar = confirm(`⚠️ ¿Confirmas que deseas ELIMINAR permanentemente el producto "${nombre}"?\n\nEsta acción no se puede deshacer.`);
+      if (!confirmar) return;
+
+      const { error } = await client.from('productos').delete().eq('id', id);
+      if (error) alert('Error al eliminar producto: ' + error.message);
+      else {
+        alert(`El producto "${nombre}" ha sido eliminado del inventario.`);
+        cargarTodo();
+      }
     }
 
     async function marcarComoVacio(id, nombre, stockActual) {
