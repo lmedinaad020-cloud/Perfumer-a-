@@ -195,9 +195,9 @@
           <div class="grid-2">
             <div id="grpTamano" class="form-group hidden">
               <label>Tamaño de decant</label>
-              <select id="itemTamano">
+              <select id="itemTamano" onchange="mostrarPreviewPerfumeVenta()">
                 <option value="2ml">2ml</option>
-                <option value="3ml">3ml</option>
+                <option value="3ml" selected>3ml</option>
                 <option value="5ml">5ml</option>
                 <option value="10ml">10ml</option>
               </select>
@@ -573,7 +573,7 @@
               <div>
                 <h4 class="product-card-title">${p.nombre}</h4>
                 <div style="margin-bottom:6px; font-size:0.83rem;">
-                  Precio Venta (PVP): <strong style="color:var(--gold-light);">S/ ${precioSugeridoVal.toFixed(2)}</strong>
+                  Precio Sugerido (PVP): <strong style="color:var(--gold-light);">S/ ${precioSugeridoVal.toFixed(2)}</strong>
                 </div>
                 ${esAdmin() ? `
                   <div class="product-card-meta">
@@ -738,9 +738,55 @@
       mostrarPreviewPerfumeVenta();
     }
 
+    // CALCULA EL PRECIO SUGERIDO AUTOMÁTICO SEGÚN PERFUME Y TAMAÑO
+    function obtenerPrecioSugeridoVenta(perfumeObj, tipoVenta, tamanoDecant) {
+      if (!perfumeObj) return 0;
+
+      if (tipoVenta === 'Perfume Sellado') {
+        return parseFloat(perfumeObj.precio_sugerido || 0);
+      }
+
+      // LÓGICA PARA DECANTS
+      const nombreNorm = perfumeObj.nombre.toUpperCase().trim();
+
+      // 1. AL HARAMAIN GOLD EDITION
+      if (nombreNorm.includes('AL HARAMAIN') || nombreNorm.includes('GOLD EDITION')) {
+        if (tamanoDecant === '3ml') return 25;
+        if (tamanoDecant === '5ml') return 45;
+        if (tamanoDecant === '10ml') return 65;
+        if (tamanoDecant === '2ml') return 18;
+      }
+
+      // 2. LIQUID BRUN
+      if (nombreNorm.includes('LIQUID BRUN') || nombreNorm.includes('LIQUID BRUM')) {
+        if (tamanoDecant === '3ml') return 20;
+        if (tamanoDecant === '5ml') return 30;
+        if (tamanoDecant === '10ml') return 40;
+        if (tamanoDecant === '2ml') return 15;
+      }
+
+      // 3. 9PM NIGHT OUT
+      if (nombreNorm.includes('9PM') || nombreNorm.includes('NIGHT OUT')) {
+        if (tamanoDecant === '3ml') return 20;
+        if (tamanoDecant === '5ml') return 30;
+        if (tamanoDecant === '10ml') return 40;
+        if (tamanoDecant === '2ml') return 15;
+      }
+
+      // 4. DECANTS GENERALES
+      if (tamanoDecant === '3ml') return 15;
+      if (tamanoDecant === '5ml') return 25;
+      if (tamanoDecant === '10ml') return 10;
+      if (tamanoDecant === '2ml') return 10;
+
+      return parseFloat(perfumeObj.precio_sugerido || 0);
+    }
+
     function mostrarPreviewPerfumeVenta() {
       const perfumeId = document.getElementById('itemPerfume').value;
       const cardPreview = document.getElementById('previewPerfumeVenta');
+      const tipoVenta = document.getElementById('itemTipo').value;
+      const tamanoDecant = document.getElementById('itemTamano').value;
 
       if (!perfumeId) {
         cardPreview.classList.add('hidden');
@@ -750,17 +796,15 @@
 
       const perfume = listaProductos.find(p => p.id == perfumeId);
       if (perfume) {
-        document.getElementById('prevNombre').innerText = `${perfume.nombre} (${perfume.tamano || '100ml'})`;
-        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades | PVP Sugerido: S/ ${parseFloat(perfume.precio_sugerido || 0).toFixed(2)}`;
+        const precioAuto = obtenerPrecioSugeridoVenta(perfume, tipoVenta, tamanoDecant);
+
+        document.getElementById('prevNombre').innerText = `${perfume.nombre} (${tipoVenta === 'Decant' ? tamanoDecant : (perfume.tamano || '100ml')})`;
+        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades | PVP Sugerido: S/ ${precioAuto.toFixed(2)}`;
         document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
         cardPreview.classList.remove('hidden');
 
-        // COLOCAR PRECIO SUGERIDO AUTOMÁTICAMENTE
-        if (perfume.precio_sugerido && parseFloat(perfume.precio_sugerido) > 0) {
-          document.getElementById('itemPrecio').value = parseFloat(perfume.precio_sugerido).toFixed(2);
-        } else {
-          document.getElementById('itemPrecio').value = '';
-        }
+        // COLOCAR PRECIO AUTOMÁTICAMENTE
+        document.getElementById('itemPrecio').value = precioAuto > 0 ? precioAuto.toFixed(2) : '';
       } else {
         cardPreview.classList.add('hidden');
       }
