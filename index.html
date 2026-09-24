@@ -49,8 +49,9 @@
     .login-card { max-width: 440px; margin: 30px auto 0; }
     .form-group { margin-bottom: 14px; }
     label { display: block; font-size: .75rem; letter-spacing: .05em; margin-bottom: 6px; color: var(--gold-light); }
-    input, select { width: 100%; padding: 11px 12px; border-radius: 7px; border: 1px solid rgba(246,240,231,.22); outline: none; background: rgba(2,19,38,.52); color: var(--ivory); font: inherit; }
-    input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,144,54,.16); }
+    input, select, textarea { width: 100%; padding: 11px 12px; border-radius: 7px; border: 1px solid rgba(246,240,231,.22); outline: none; background: rgba(2,19,38,.52); color: var(--ivory); font: inherit; }
+    input:focus, select:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,144,54,.16); }
+    textarea { resize: vertical; min-height: 60px; }
     button { width: 100%; padding: 12px 14px; background: linear-gradient(135deg, #dba648, #ae7628); color: #fffaf0; border: 1px solid #efc66e; border-radius: 7px; font: 700 .87rem inherit; letter-spacing: .02em; cursor: pointer; margin-top: 8px; transition: transform .15s, filter .15s; }
     button:hover { filter: brightness(1.08); transform: translateY(-1px); }
     button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
@@ -124,6 +125,8 @@
     .modal-content { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
 
+    .nota-box { background: rgba(201,144,54,0.12); border-left: 3px solid var(--gold); padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; margin: 6px 0; color: #f6f0e7; }
+
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
     @media (max-width: 520px) { body { padding: 16px 11px 30px; } .card { padding: 17px; } .grid-2 { grid-template-columns: 1fr; gap: 0; } .nav-tabs { gap: 5px; } .nav-tabs button { padding: 10px 5px; font-size: .68rem; } .header .brand img { width: 58px; height: 58px; } .header .brand-name, .header .brand-tagline { margin-left: 65px; } .day-header { flex-direction: column; align-items: flex-start; gap: 4px; } .inv-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
@@ -151,7 +154,7 @@
       <nav class="nav-tabs">
         <button onclick="mostrarTab('venta')">🛒 Vender</button>
         <button onclick="mostrarTab('stock')">📦 Inventario</button>
-        <button onclick="mostrarTab('historial')">📊 Historial</button>
+        <button onclick="mostrarTab('historial')">📊 Historial y Reportes</button>
         <button onclick="mostrarTab('asistencia')">⏱️ Asistencia</button>
       </nav>
 
@@ -222,7 +225,7 @@
         </div>
 
         <form id="formVenta" style="margin-top:18px;">
-          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">2. Datos del pago, envío y comprobante</h4>
+          <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">2. Datos del pago, envío y observaciones</h4>
           <div class="grid-2">
             <div class="form-group">
               <label>Método de pago</label>
@@ -242,6 +245,12 @@
                 <option value="Delivery Presencial">Delivery Presencial</option>
               </select>
             </div>
+          </div>
+
+          <!-- CAMPO NOTAS/OBSERVACIONES DE LA VENTA -->
+          <div class="form-group" style="margin-top:6px;">
+            <label>📝 Observaciones / Notas de la venta (Opcional)</label>
+            <textarea id="vtaNotas" placeholder="Ej: Cliente solicitó envío urgente por Olva, coordinó entrega en San Isidro, etc."></textarea>
           </div>
 
           <div class="form-group" style="margin-top:10px;">
@@ -282,7 +291,6 @@
               <input type="url" id="stkImagen" placeholder="https://ejemplo.com/imagen.jpg">
             </div>
 
-            <!-- TAMAÑO DE BOTELLA ENTERA O ENVASE -->
             <div id="grpTamanoBotella" class="form-group">
               <label id="lblTamanoBotella">Capacidad de la Botella</label>
               <select id="stkTamanoBotella">
@@ -357,15 +365,29 @@
       <!-- TAB HISTORIAL -->
       <div id="tab-historial" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-          <h3 style="margin:0;">📊 Historial por Cierre de Caja Diaria</h3>
+          <h3 style="margin:0;">📊 Historial y Análisis de Ventas</h3>
           <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
         </div>
 
+        <!-- GRÁFICO 1: DIARIO DE VENTAS -->
         <div class="chart-container">
           <h4 id="txtTituloGrafico" style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
           <canvas id="chartVentasDiarias" height="180"></canvas>
         </div>
 
+        <!-- GRÁFICO 2: COMPARATIVA POR TRABAJADOR -->
+        <div class="chart-container">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+            <h4 style="margin:0; color:var(--gold-light); font-size:0.9rem;">👥 Ventas Totales por Trabajador / Vendedor</h4>
+            <select id="selectFiltroVendedor" onchange="actualizarGraficoVendedores()" style="width:auto; padding:4px 8px; font-size:0.75rem;">
+              <option value="TODOS">Todo el Historial</option>
+              <option value="HOY">Solo Ventas de Hoy</option>
+            </select>
+          </div>
+          <canvas id="chartVentasVendedor" height="180"></canvas>
+        </div>
+
+        <h3 style="margin:20px 0 10px;">📋 Cierre Diario de Cajas</h3>
         <div id="listaVentas">Cargando historial...</div>
       </div>
 
@@ -424,7 +446,11 @@
     let listaAsistenciaCache = [];
     let registroAsistenciaActivo = null;
     let intervalTimer = null;
+    
+    // INSTANCIAS DE LOS DOS GRÁFICOS
     let miGraficoVentas = null;
+    let miGraficoVendedores = null;
+
     let categoriaFiltroActual = 'TODOS';
     let procesandoVenta = false;
 
@@ -797,7 +823,6 @@
       mostrarPreviewPerfumeVenta();
     }
 
-    // CALCULA EL PRECIO SUGERIDO AUTOMÁTICO SEGÚN PERFUME Y TAMAÑO
     function obtenerPrecioSugeridoVenta(perfumeObj, tipoVenta, tamanoDecant) {
       if (!perfumeObj) return 0;
 
@@ -805,10 +830,8 @@
         return parseFloat(perfumeObj.precio_sugerido || 0);
       }
 
-      // LÓGICA PARA DECANTS
       const nombreNorm = perfumeObj.nombre.toUpperCase().trim();
 
-      // 1. AL HARAMAIN GOLD EDITION
       if (nombreNorm.includes('AL HARAMAIN') || nombreNorm.includes('GOLD EDITION')) {
         if (tamanoDecant === '3ml') return 25;
         if (tamanoDecant === '5ml') return 45;
@@ -816,7 +839,6 @@
         if (tamanoDecant === '2ml') return 18;
       }
 
-      // 2. LIQUID BRUN
       if (nombreNorm.includes('LIQUID BRUN') || nombreNorm.includes('LIQUID BRUM')) {
         if (tamanoDecant === '3ml') return 20;
         if (tamanoDecant === '5ml') return 30;
@@ -824,7 +846,6 @@
         if (tamanoDecant === '2ml') return 15;
       }
 
-      // 3. 9PM NIGHT OUT
       if (nombreNorm.includes('9PM') || nombreNorm.includes('NIGHT OUT')) {
         if (tamanoDecant === '3ml') return 20;
         if (tamanoDecant === '5ml') return 30;
@@ -832,7 +853,6 @@
         if (tamanoDecant === '2ml') return 15;
       }
 
-      // 4. DECANTS GENERALES
       if (tamanoDecant === '3ml') return 15;
       if (tamanoDecant === '5ml') return 25;
       if (tamanoDecant === '10ml') return 35;
@@ -862,7 +882,6 @@
         document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
         cardPreview.classList.remove('hidden');
 
-        // COLOCAR PRECIO AUTOMÁTICAMENTE
         document.getElementById('itemPrecio').value = precioAuto > 0 ? precioAuto.toFixed(2) : '';
       } else {
         cardPreview.classList.add('hidden');
@@ -1056,7 +1075,7 @@
             <div style="display:flex; align-items:center; gap:10px;">
               <img src="${item.imagen_url || IMG_DEFAULT}" style="width:36px; height:36px; object-fit:cover; border-radius:5px; border:1px solid var(--border);" onerror="this.src='${IMG_DEFAULT}'">
               <div>
-                <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge ${item.es_regalo ? 'badge-gift' : ''}">${item.es_regalo ? '🎁 GRATIS' : `${item.tipo} -${item.tamano}`}</span><br>
+                <strong>${item.cantidad}x ${item.nombre}</strong> <span class="badge ${item.es_regalo ? 'badge-gift' : ''}">${item.es_regalo ? '🎁 GRATIS' : `${item.tipo} - ${item.tamano}`}</span><br>
                 <span style="color:var(--muted); font-size:0.75rem;">Cobrado: S/ ${item.precio_unitario.toFixed(2)} | Costo Estimado: S/ ${item.costo_unitario.toFixed(2)}</span>
               </div>
             </div>
@@ -1129,6 +1148,7 @@
 
         const canal = document.getElementById('vtaCanal').value;
         const metodoPago = document.getElementById('vtaMetodoPago').value;
+        const notasTexto = document.getElementById('vtaNotas').value.trim();
         const totalMonto = carritoVenta.reduce((acc, item) => acc + item.subtotal, 0);
         const totalCosto = carritoVenta.reduce((acc, item) => acc + item.costo_total, 0);
         
@@ -1159,7 +1179,8 @@
           vendedor_email: usuarioActual.email,
           ubicacion_venta: `${canal} (${metodoPago})`,
           detalles: carritoVenta,
-          comprobante_url: comprobanteBase64 || null
+          comprobante_url: comprobanteBase64 || null,
+          notas: notasTexto || null // SE GUARDA LA NOTA O OBSERVACIÓN
         };
 
         const { error } = await client.from('ventas').insert([venta]);
@@ -1169,6 +1190,7 @@
           alert('¡Venta realizada con éxito!');
           carritoVenta = [];
           comprobanteBase64 = null;
+          document.getElementById('vtaNotas').value = '';
           document.getElementById('vtaFotoComprobante').value = '';
           document.getElementById('previewComprobanteContainer').classList.add('hidden');
           renderizarCarrito();
@@ -1194,6 +1216,7 @@
       if (!ventas || !ventas.length) {
         contenedor.innerHTML = '<p class="empty-msg">No hay ventas registradas aún.</p>';
         renderizarGraficoVentas({});
+        actualizarGraficoVendedores();
         return;
       }
 
@@ -1272,12 +1295,15 @@
           ganNeta = montoVenta * 0.50;
         }
 
+        v._gananciaCalculada = ganNeta; // GUARDAMOS VALOR TEMPORAL DE GANANCIA
+
         grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index, gananciaNetaCalculada: ganNeta });
         grupos[claveFechaLocal].totalGanado += montoVenta;
         grupos[claveFechaLocal].gananciaNetaTotal += ganNeta;
       });
 
       renderizarGraficoVentas(grupos);
+      actualizarGraficoVendedores();
 
       const clavesOrdenadas = Object.keys(grupos).sort().reverse();
 
@@ -1300,9 +1326,12 @@
                 <h4 style="margin:5px 0; color:var(--ivory);">${v.producto_nombre}</h4>
                 <p class="price" style="margin:0;font-size:.83rem;">
                   Total Venta: S/ ${parseFloat(v.monto_total).toFixed(2)}
-                  ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Margen de Contribución: S/ ${gNeta}</span>` : ''}
+                  ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Margen: S/ ${gNeta}</span>` : ''}
                 </p>
                 <p style="margin:4px 0 0;font-size:.72rem;">Vendido por: <strong>${v.vendedor_email}</strong> vía <strong>${v.ubicacion_venta}</strong></p>
+                
+                ${v.notas ? `<div class="nota-box">📌 <strong>Nota:</strong> ${v.notas}</div>` : ''}
+
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
                   ${v.comprobante_url ? `<button type="button" onclick="abrirModalComprobante(${idx})" class="btn-sec" style="padding:4px 10px; font-size:0.75rem; width:auto; margin:0;">📸 Ver Captura</button>` : ''}
                   ${esUsuarioAdmin ? `<button type="button" onclick="deshacerVenta(${v.id})" class="btn-undo">↩️ Deshacer Venta</button>` : ''}
@@ -1319,7 +1348,7 @@
               <span class="day-header-summary">
                 <strong>${numVentas} ${numVentas === 1 ? 'venta' : 'ventas'}</strong><br>
                 <span>Venta Total: <strong>S/ ${totalVentaSoles}</strong></span>
-                ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Margen de Contribución: <strong>S/ ${gananciaNetaSoles}</strong></span>` : ''}
+                ${esUsuarioAdmin ? ` | <span style="color:#a3e6af;">Margen: <strong>S/ ${gananciaNetaSoles}</strong></span>` : ''}
                 <span id="arrow-${clave}">${esPrimerDia ? '▲' : '▼'}</span>
               </span>
             </button>
@@ -1411,7 +1440,7 @@
             tooltip: {
               callbacks: {
                 label: function(context) {
-                  return ` ${esUsuarioAdmin ? 'Margen de Contribución' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
+                  return ` ${esUsuarioAdmin ? 'Margen' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
                 }
               }
             },
@@ -1467,6 +1496,91 @@
       });
     }
 
+    // NUEVO GRÁFICO 2: RENDIMIENTO POR VENDEDOR
+    function actualizarGraficoVendedores() {
+      const ctx = document.getElementById('chartVentasVendedor');
+      if (!ctx) return;
+
+      const filtro = document.getElementById('selectFiltroVendedor').value;
+      const esUsuarioAdmin = esAdmin();
+
+      const ahora = new Date();
+      const anoHoy = ahora.getFullYear();
+      const mesHoy = String(ahora.getMonth() + 1).padStart(2, '0');
+      const diaHoy = String(ahora.getDate()).padStart(2, '0');
+      const fechaHoyStr = `${anoHoy}-${mesHoy}-${diaHoy}`;
+
+      let ventasFiltradas = listaVentasCache;
+      if (filtro === 'HOY') {
+        ventasFiltradas = listaVentasCache.filter(v => {
+          const f = new Date(v.fecha);
+          const fStr = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+          return fStr === fechaHoyStr;
+        });
+      }
+
+      const resumenVendedores = {};
+
+      ventasFiltradas.forEach(v => {
+        let vend = v.vendedor_email || 'Sin Asignar';
+        vend = vend.split('@')[0]; // Muestra el nombre corto antes del @
+
+        if (!resumenVendedores[vend]) {
+          resumenVendedores[vend] = 0;
+        }
+
+        const monto = esUsuarioAdmin ? (v._gananciaCalculada || parseFloat(v.monto_total || 0) * 0.5) : parseFloat(v.monto_total || 0);
+        resumenVendedores[vend] += monto;
+      });
+
+      const labels = Object.keys(resumenVendedores);
+      const dataValores = Object.values(resumenVendedores);
+
+      if (miGraficoVendedores) {
+        miGraficoVendedores.destroy();
+      }
+
+      miGraficoVendedores = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.length ? labels : ['Sin Datos'],
+          datasets: [{
+            label: esUsuarioAdmin ? 'Margen Generado (S/)' : 'Total Vendido (S/)',
+            data: dataValores.length ? dataValores : [0],
+            backgroundColor: 'rgba(96, 165, 250, 0.75)',
+            borderColor: '#60a5fa',
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return ` Total: S/ ${context.parsed.y.toFixed(2)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#b8c6d5' },
+              grid: { color: 'rgba(246,240,231,0.08)' }
+            },
+            x: {
+              ticks: { color: '#b8c6d5' },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
     function toggleDiaHistorial(claveFecha) {
       const el = document.getElementById(`content-${claveFecha}`);
       const arrow = document.getElementById(`arrow-${claveFecha}`);
@@ -1495,7 +1609,7 @@
       if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Margen de Contribución (S/)", "Vendedor", "Canal / Pago", "Tiene Comprobante"]
+        ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Margen de Contribución (S/)", "Vendedor", "Canal / Pago", "Notas / Observaciones", "Tiene Comprobante"]
       ];
 
       listaVentasCache.forEach(v => {
@@ -1525,6 +1639,7 @@
           ganNeta,
           v.vendedor_email || '',
           v.ubicacion_venta || '',
+          v.notas || '',
           v.comprobante_url ? 'SÍ' : 'NO'
         ]);
       });
