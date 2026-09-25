@@ -9,7 +9,18 @@
   <link rel="apple-touch-icon" href="assets/alpha-logo.jpeg">
 
   <!-- SUPABASE, SHEETJS & CHART.JS -->
+  <!-- ========================================================= -->
+  <!-- CARGA DE SCRIPTS EN ORDEN ESTRICTO                        -->
+  <!-- ========================================================= -->
+
+  <!-- 1. SDK Oficial de Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 2. Cliente de Supabase -->
+  <script src="./supabaseClient.js"></script>
+
+  <!-- 3. Lógica de la aplicación -->
+  <script src="./app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
@@ -1897,13 +1908,5 @@
       XLSX.writeFile(wb, `Reporte_Asistencia_ALPHA_${fechaHoy}.xlsx`);
     }
   </script>
-  <!-- 1. CDN de Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
-  <!-- 2. Cliente con la configuración del almacenamiento -->
-  <script src="./supabaseClient.js"></script>
-
-  <!-- 3. Lógica de la aplicación -->
-  <script src="./app.js"></script>
 </body>
 </html>
