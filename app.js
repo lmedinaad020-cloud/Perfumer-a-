@@ -1,27 +1,33 @@
-// Reutilizar la instancia global definida en supabaseClient.js
 const supabase = window.supabaseClient;
 
-// Comprobar estado al cargar la página
-document.addEventListener('DOMContentLoaded', async () => {
-  // getSession recupera los tokens guardados en localStorage
-  const { data: { session }, error } = await supabase.auth.getSession();
+// 1. Función que controla qué interfaz mostrar
+function evaluarEstadoSesion(session) {
+  const loginSection = document.getElementById('login-section'); // Reemplaza con el ID de tu contenedor de Login
+  const appSection = document.getElementById('app-section');     // Reemplaza con el ID de tu contenedor Principal
 
   if (session) {
-    console.log('Sesión activa detectada:', session.user);
-    // Ejecuta la función que muestra la vista de tu aplicación principal
-    mostrarVistaPrincipal(session.user);
+    console.log('Sesión activa:', session.user);
+    if (loginSection) loginSection.style.display = 'none';
+    if (appSection) appSection.style.display = 'block';
   } else {
-    console.log('No hay sesión guardada.');
-    // Muestra la pantalla de login/registro
-    mostrarVistaLogin();
+    console.log('Sin sesión activa');
+    if (loginSection) loginSection.style.display = 'block';
+    if (appSection) appSection.style.display = 'none';
   }
+}
+
+// 2. Comprobación síncrona/inmediata al cargar el DOM
+document.addEventListener('DOMContentLoaded', async () => {
+  // Consultar directamente el token guardado en localStorage
+  const { data: { session } } = await supabase.auth.getSession();
+  evaluarEstadoSesion(session);
 });
 
-// Asigna la función de cerrar sesión ÚNICAMENTE al botón de logout
-const btnLogout = document.getElementById('btn-logout'); // Ajusta con el ID de tu botón
-if (btnLogout) {
-  btnLogout.addEventListener('click', async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
-  });
-}
+// 3. Listener para eventos en tiempo real (Login / Logout)
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    evaluarEstadoSesion(session);
+  } else if (event === 'SIGNED_OUT') {
+    evaluarEstadoSesion(null);
+  }
+});
