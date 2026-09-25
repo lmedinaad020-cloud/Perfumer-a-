@@ -1817,46 +1817,43 @@
 
       if (error) alert('Error al marcar salida: ' + error.message);
       else {
-        alert('¡Salida registrada correctamente!');
+        alert(`¡Salida registrada! Trabajaste un total de ${horasTrabajadas} horas.`);
+        if (intervalTimer) clearInterval(intervalTimer);
         cargarEstadoAsistencia();
       }
     }
 
     async function cargarHistorialAsistencia() {
-      let query = client.from('asistencia').select('*').order('fecha_ingreso', { ascending: false }).limit(30);
-      
+      let query = client.from('asistencia').select('*').order('fecha_ingreso', { ascending: false }).limit(20);
+
       if (!esAdmin()) {
         query = query.eq('vendedor_email', usuarioActual.email);
       }
 
-      const { data } = await query;
-      listaAsistenciaCache = data || [];
-      const cont = document.getElementById('listaAsistencia');
+      const { data: registros } = await query;
+      listaAsistenciaCache = registros || [];
 
-      if (!listaAsistenciaCache.length) {
-        cont.innerHTML = '<p class="empty-msg">No hay registros de asistencia aún.</p>';
+      const cont = document.getElementById('listaAsistencia');
+      if (!registros || !registros.length) {
+        cont.innerHTML = '<p class="empty-msg">No hay registros de asistencia recientes.</p>';
         return;
       }
 
-      cont.innerHTML = listaAsistenciaCache.map(r => {
-        const ingreso = new Date(r.fecha_ingreso);
-        const salida = r.fecha_salida ? new Date(r.fecha_salida) : null;
-        
+      cont.innerHTML = registros.map(r => {
+        const ingreso = new Date(r.fecha_ingreso).toLocaleString();
+        const salida = r.fecha_salida ? new Date(r.fecha_salida).toLocaleString() : 'En curso...';
+        const horas = r.horas_trabajadas ? `${r.horas_trabajadas} hrs` : '--';
+
         return `
-          <div class="stock-item" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <div>
-              <strong>👤 ${r.vendedor_email}</strong><br>
-              <span style="font-size:0.78rem; color:var(--muted);">
-                Entrada: ${ingreso.toLocaleDateString()} - ${ingreso.toLocaleTimeString()}
-              </span><br>
-              <span style="font-size:0.78rem; color:${salida ? 'var(--muted)' : 'var(--gold-light)'};">
-                Salida: ${salida ? salida.toLocaleTimeString() : '⏳ En turno activo...'}
-              </span>
-            </div>
-            <div>
-              <span class="badge ${salida ? 'badge-ok' : 'badge-low'}">
-                ${salida ? `⏱️ ${r.horas_trabajadas || 0} hrs` : '🟢 ACTIVO'}
-              </span>
+          <div class="stock-item">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+              <div>
+                <strong>👤 ${r.vendedor_email}</strong><br>
+                <span style="font-size:0.78rem; color:var(--muted);">Entrada: ${ingreso} | Salida: ${salida}</span>
+              </div>
+              <div style="text-align:right;">
+                <span class="badge ${r.fecha_salida ? 'badge-ok' : 'badge-low'}">${horas}</span>
+              </div>
             </div>
           </div>
         `;
@@ -1864,31 +1861,35 @@
     }
 
     function exportarAsistenciaExcel() {
-      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar la asistencia.');
-      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay datos de asistencia para exportar.');
-      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Reintenta en un momento.');
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden exportar asistencia.');
+      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay registros de asistencia para exportar.');
+      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Trabajador", "Fecha Ingreso", "Hora Ingreso", "Fecha Salida", "Hora Salida", "Total Horas Trabajadas", "Estado"]
+        ["ID", "Vendedor / Trabajador", "Fecha de Ingreso", "Fecha de Salida", "Horas Trabajadas"]
       ];
 
-      listaAsistenciaCache.forEach(a => {
-        const ing = new Date(a.fecha_ingreso);
-        const sal = a.fecha_salida ? new Date(a.fecha_salida) : null;
-
+      listaAsistenciaCache.forEach(r => {
         datosExcel.push([
-          a.id || '',
-          a.vendedor_email || '',
-          ing.toLocaleDateString(),
-          ing.toLocaleTimeString(),
-          sal ? sal.toLocaleDateString() : 'N/A',
-          sal ? sal.toLocaleTimeString() : 'N/A',
-          a.horas_trabajadas || 0,
-          sal ? 'FINALIZADO' : 'EN TURNO'
+          r.id || '',
+          r.vendedor_email || '',
+          r.fecha_ingreso ? new Date(r.fecha_ingreso).toLocaleString() : '',
+          r.fecha_salida ? new Date(r.fecha_salida).toLocaleString() : 'En curso',
+          r.horas_trabajadas || 0
         ]);
       });
 
       const ws = XLSX.utils.aoa_to_sheet(datosExcel);
+      const colWidths = datosExcel[0].map((col, colIdx) => {
+        let maxLen = col.toString().length;
+        datosExcel.forEach(row => {
+          const val = row[colIdx] ? row[colIdx].toString() : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 12), 40) };
+      });
+      ws['!cols'] = colWidths;
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
 
