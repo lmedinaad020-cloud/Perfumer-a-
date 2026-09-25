@@ -1,24 +1,26 @@
-// app.js
+// Usar la instancia inicializada en supabaseClient.js
 const supabase = window.supabaseClient;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Verificar sesión existente en el navegador
+  // 1. Obtener la sesión activa guardada en el navegador
   const { data: { session }, error } = await supabase.auth.getSession();
 
   if (session) {
-    console.log('Sesión activa:', session.user);
-    // Mostrar contenido protegido
+    // Si la sesión existe en localStorage, mantiene al usuario adentro
+    console.log('Sesión activa encontrada:', session.user);
+    mostrarPanelUsuario(session.user);
   } else {
-    console.log('No hay sesión activa');
-    // Mostrar formulario de acceso
+    // Si no hay sesión, muestra el formulario de acceso
+    console.log('No hay sesión activa.');
+    mostrarFormularioLogin();
   }
+});
 
-  // Escuchar cambios de estado
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-      console.log('Usuario autenticado:', session?.user);
-    } else if (event === 'SIGNED_OUT') {
-      console.log('Sesión cerrada');
-    }
-  });
+// Listener para reaccionar a cambios de autenticación
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN') {
+    mostrarPanelUsuario(session.user);
+  } else if (event === 'SIGNED_OUT') {
+    mostrarFormularioLogin();
+  }
 });
