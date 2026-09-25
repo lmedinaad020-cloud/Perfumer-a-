@@ -429,6 +429,38 @@
         <button onclick="cerrarModalQRYape()" style="margin-top:14px; background:linear-gradient(135deg, #742284, #5c189a); border-color:#b15eff;">Cerrar QR</button>
       </div>
     </div>
+
+    <!-- MODAL SELECCIÓN PERFUME DE REGALO (3ML) -->
+    <div id="modalRegaloPerfume" class="modal-overlay hidden">
+      <div class="modal-content" style="max-width: 450px; text-align: left;">
+        <h4 style="margin:0 0 8px; color:var(--gold-light); text-align:center;">🎁 Seleccionar Decant de Regalo (3ml)</h4>
+        <p style="font-size:0.8rem; text-align:center; margin-bottom:12px; color:var(--muted);">Escribe para buscar el perfume disponible para el regalito:</p>
+        
+        <div class="form-group">
+          <div class="search-box" style="margin:0;">
+            <input type="text" id="regaloBuscador" placeholder="Buscar perfume de regalo..." oninput="filtrarRegalosModal()">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Perfumes disponibles para Decant:</label>
+          <select id="selectRegaloModal" onchange="mostrarPreviewRegaloModal()"></select>
+        </div>
+
+        <div id="previewRegaloCard" class="preview-card hidden" style="margin-top:10px;">
+          <img id="imgRegaloPreview" src="" alt="Perfume Regalo" onerror="this.src='https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg'">
+          <div>
+            <h4 id="nombreRegaloPreview" style="margin:0 0 3px; font-size:0.88rem; color:var(--ivory);">--</h4>
+            <p id="stockRegaloPreview" style="margin:0; font-size:0.75rem; color:var(--gold-light);">--</p>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button type="button" onclick="confirmarRegaloDecant3ml()" style="background:linear-gradient(135deg, #28a745, #1e7e34); border-color:#28a745; font-size:0.85rem;">🎁 Confirmar Regalo</button>
+          <button type="button" onclick="cerrarModalRegalo()" class="btn-sec" style="font-size:0.85rem;">Cancelar</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
@@ -453,6 +485,7 @@
 
     let categoriaFiltroActual = 'TODOS';
     let procesandoVenta = false;
+    let perfumesRegaloFiltrados = [];
 
     const PUNTO_EQUILIBRIO = 140;
     const META_DIARIA = 199;
@@ -960,7 +993,7 @@
         const precioBotella = parseFloat(perfumeObj.precio || 0);
         const mlBotellaBase = parseInt(perfumeObj.tamano) || 100;
         const costoPorMl = precioBotella / mlBotellaBase;
-        const mlVendido = parseInt(tamanoDecant) || 2;
+        const mlVendido = parseInt(tamanoDecant) || 3;
         
         const costoLiquido = costoPorMl * mlVendido;
 
@@ -991,9 +1024,9 @@
       carritoVenta.push(item);
 
       if (tipoVenta === 'Perfume Sellado') {
-        const quiereRegalo = confirm(`🎁 ¡PROMOCIÓN DE REGALO!\n\n¿Deseas agregar un Decant de 2ml DE REGALO para esta compra de "${perfumeObj.nombre}"?`);
+        const quiereRegalo = confirm(`🎁 ¡PROMOCIÓN DE REGALO!\n\n¿Deseas agregar un Decant de 3ml DE REGALO para esta compra de "${perfumeObj.nombre}"?`);
         if (quiereRegalo) {
-          ofrecerRegaloDecant2ml();
+          ofrecerRegaloDecant3ml();
         }
       }
 
@@ -1002,45 +1035,84 @@
       renderizarCarrito();
     }
 
-    function ofrecerRegaloDecant2ml() {
+    function ofrecerRegaloDecant3ml() {
       const perfumesAbiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0);
       if (!perfumesAbiertos.length) {
         alert('⚠️ No hay perfumes abiertos disponibles para preparar el decant de regalo.');
         return;
       }
 
-      const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === '2ml');
+      document.getElementById('regaloBuscador').value = '';
+      filtrarRegalosModal();
+      document.getElementById('modalRegaloPerfume').classList.remove('hidden');
+    }
+
+    function filtrarRegalosModal() {
+      const query = document.getElementById('regaloBuscador').value.toLowerCase().trim();
+      perfumesRegaloFiltrados = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0 && p.nombre.toLowerCase().includes(query));
+
+      const selectRegalo = document.getElementById('selectRegaloModal');
+      if (!perfumesRegaloFiltrados.length) {
+        selectRegalo.innerHTML = '<option value="">-- Sin perfumes disponibles --</option>';
+      } else {
+        selectRegalo.innerHTML = perfumesRegaloFiltrados.map(p => `<option value="${p.id}">${p.nombre} [${p.tamano || '100ml'}] (Stock: ${p.stock})</option>`).join('');
+      }
+
+      mostrarPreviewRegaloModal();
+    }
+
+    function mostrarPreviewRegaloModal() {
+      const regaloId = document.getElementById('selectRegaloModal').value;
+      const cardPreview = document.getElementById('previewRegaloCard');
+
+      if (!regaloId) {
+        cardPreview.classList.add('hidden');
+        return;
+      }
+
+      const perfume = listaProductos.find(p => p.id == regaloId);
+      if (perfume) {
+        document.getElementById('nombreRegaloPreview').innerText = `${perfume.nombre} (Regalo Decant 3ml)`;
+        document.getElementById('stockRegaloPreview').innerText = `Stock disponible: ${perfume.stock} frascos`;
+        document.getElementById('imgRegaloPreview').src = perfume.imagen_url || IMG_DEFAULT;
+        cardPreview.classList.remove('hidden');
+      } else {
+        cardPreview.classList.add('hidden');
+      }
+    }
+
+    function cerrarModalRegalo() {
+      document.getElementById('modalRegaloPerfume').classList.add('hidden');
+    }
+
+    function confirmarRegaloDecant3ml() {
+      const regaloId = document.getElementById('selectRegaloModal').value;
+      if (!regaloId) {
+        alert('Por favor selecciona un perfume para el regalo.');
+        return;
+      }
+
+      const perfumeRegalo = listaProductos.find(p => p.id == regaloId);
+      if (!perfumeRegalo) return;
+
+      const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === '3ml');
       let costoVacio = 0;
       if (vacioRegalo) {
         costoVacio = parseFloat(vacioRegalo.precio || 0);
         if (vacioRegalo.stock < 1) {
-          alert('⚠️ Nota: No quedan envases vacíos de 2ml registrados en el inventario para el regalo.');
+          alert('⚠️ Nota: No quedan envases vacíos de 3ml registrados en el inventario para el regalo.');
         }
       }
 
-      let menuOpciones = "Selecciona el número del perfume que regalarás en 2ml:\n\n";
-      perfumesAbiertos.forEach((p, idx) => {
-        menuOpciones += `${idx + 1}. ${p.nombre} (${p.tamano || '100ml'})\n`;
-      });
-
-      const eleccion = prompt(menuOpciones);
-      const num = parseInt(eleccion);
-
-      if (isNaN(num) || num < 1 || num > perfumesAbiertos.length) {
-        alert('Opción inválida. No se agregó el regalito.');
-        return;
-      }
-
-      const perfumeRegalo = perfumesAbiertos[num - 1];
       const mlBase = parseInt(perfumeRegalo.tamano) || 100;
-      const costoLiquido2ml = (parseFloat(perfumeRegalo.precio || 0) / mlBase) * 2;
-      const costoRegaloTotal = costoLiquido2ml + costoVacio;
+      const costoLiquido3ml = (parseFloat(perfumeRegalo.precio || 0) / mlBase) * 3;
+      const costoRegaloTotal = costoLiquido3ml + costoVacio;
 
       const regaloItem = {
         producto_id: perfumeRegalo.id,
-        nombre: `🎁 REGALO: Decant 2ml (${perfumeRegalo.nombre})`,
+        nombre: `🎁 REGALO: Decant 3ml (${perfumeRegalo.nombre})`,
         tipo: 'Decant',
-        tamano: '2ml',
+        tamano: '3ml',
         cantidad: 1,
         precio_unitario: 0.00,
         costo_unitario: costoRegaloTotal,
@@ -1051,7 +1123,9 @@
       };
 
       carritoVenta.push(regaloItem);
-      alert(`¡Decant de 2ml de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
+      cerrarModalRegalo();
+      renderizarCarrito();
+      alert(`¡Decant de 3ml de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
     }
 
     function eliminarDelCarrito(index) {
@@ -1180,7 +1254,7 @@
           ubicacion_venta: `${canal} (${metodoPago})`,
           detalles: carritoVenta,
           comprobante_url: comprobanteBase64 || null,
-          notas: notasTexto || null // SE GUARDA LA NOTA O OBSERVACIÓN
+          notas: notasTexto || null
         };
 
         const { error } = await client.from('ventas').insert([venta]);
@@ -1269,7 +1343,7 @@
                 const mlBotellaBase = parseInt(prodObj.tamano) || 100;
 
                 if (item.tipo === 'Decant') {
-                  const mlVendido = parseInt(item.tamano) || 2;
+                  const mlVendido = parseInt(item.tamano) || 3;
                   const costoLiquido = (precioBotella / mlBotellaBase) * mlVendido;
                   const envaseObj = catalogo.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
                   const costoEnvase = envaseObj ? parseFloat(envaseObj.precio || 0) : 0;
@@ -1295,7 +1369,7 @@
           ganNeta = montoVenta * 0.50;
         }
 
-        v._gananciaCalculada = ganNeta; // GUARDAMOS VALOR TEMPORAL DE GANANCIA
+        v._gananciaCalculada = ganNeta;
 
         grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index, gananciaNetaCalculada: ganNeta });
         grupos[claveFechaLocal].totalGanado += montoVenta;
@@ -1496,7 +1570,6 @@
       });
     }
 
-    // NUEVO GRÁFICO 2: RENDIMIENTO POR VENDEDOR
     function actualizarGraficoVendedores() {
       const ctx = document.getElementById('chartVentasVendedor');
       if (!ctx) return;
@@ -1523,7 +1596,7 @@
 
       ventasFiltradas.forEach(v => {
         let vend = v.vendedor_email || 'Sin Asignar';
-        vend = vend.split('@')[0]; // Muestra el nombre corto antes del @
+        vend = vend.split('@')[0];
 
         if (!resumenVendedores[vend]) {
           resumenVendedores[vend] = 0;
@@ -1695,7 +1768,7 @@
       
       function actualizar() {
         const ahora = new Date();
-        const diffMs = ahora - fechaIngreso;
+        const diffMs = me - fechaIngreso;
         const totalSegs = Math.floor(diffMs / 1000);
         
         const hrs = String(Math.floor(totalSegs / 3600)).padStart(2, '0');
