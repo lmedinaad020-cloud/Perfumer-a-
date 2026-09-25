@@ -482,6 +482,8 @@
     });
 
     const COMPROBANTES_BUCKET = 'comprobantes';
+    const BORRADORES_DB = 'alpha-perfumes-local';
+    const BORRADORES_STORE = 'borradores_venta';
 
     const ADMIN_EMAILS = ['diego@alpha.com', 'luis@alpha.com', 'mau@alpha.com'];
 
@@ -542,7 +544,7 @@
       }
     });
 
-    function iniciarApp() {
+    async function iniciarApp() {
       document.getElementById('sec-login').classList.add('hidden');
       document.getElementById('sec-app').classList.remove('hidden');
       document.getElementById('userLogged').innerText = `Usuario: ${usuarioActual.email} ${esAdmin() ? ' (ADMIN)' : ''}`;
@@ -561,11 +563,14 @@
         secCrearProducto.classList.add('hidden');
       }
 
+      await restaurarBorradorVenta();
+      renderizarCarrito();
       cargarTodo();
     }
 
     async function cerrarSesion() {
       if (intervalTimer) clearInterval(intervalTimer);
+      await borrarBorradorVenta();
       const { error } = await client.auth.signOut();
       if (error) alert('No se pudo cerrar sesión: ' + error.message);
     }
@@ -967,6 +972,7 @@
       if (!file) {
         comprobanteBase64 = null;
         document.getElementById('previewComprobanteContainer').classList.add('hidden');
+        guardarBorradorVenta();
         return;
       }
 
@@ -995,10 +1001,92 @@
           comprobanteBase64 = canvas.toDataURL('image/jpeg', 0.7);
           document.getElementById('imgComprobantePreview').src = comprobanteBase64;
           document.getElementById('previewComprobanteContainer').classList.remove('hidden');
+          guardarBorradorVenta();
         };
         img.src = evt.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    function abrirBaseDatosBorradores() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(BORRADORES_DB, 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains(BORRADORES_STORE)) {
+            request.result.createObjectStore(BORRADORES_STORE);
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function guardarBorradorVenta() {
+      if (!usuarioActual) return;
+      try {
+        const db = await abrirBaseDatosBorradores();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(BORRADORES_STORE, 'readwrite');
+          tx.objectStore(BORRADORES_STORE).put({
+            carritoVenta,
+            comprobanteBase64,
+            vtaNotas: document.getElementById('vtaNotas').value,
+            vtaCanal: document.getElementById('vtaCanal').value,
+            vtaMetodoPago: document.getElementById('vtaMetodoPago').value,
+            actualizado: new Date().toISOString()
+          }, usuarioActual.id);
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        });
+        db.close();
+      } catch (error) {
+        console.error('No se pudo guardar el borrador de venta:', error);
+      }
+    }
+
+    async function restaurarBorradorVenta() {
+      if (!usuarioActual) return;
+      try {
+        const db = await abrirBaseDatosBorradores();
+        const borrador = await new Promise((resolve, reject) => {
+          const tx = db.transaction(BORRADORES_STORE, 'readonly');
+          const request = tx.objectStore(BORRADORES_STORE).get(usuarioActual.id);
+          request.onsuccess = () => resolve(request.result || null);
+          request.onerror = () => reject(request.error);
+        });
+        db.close();
+        if (!borrador) return;
+
+        carritoVenta = Array.isArray(borrador.carritoVenta) ? borrador.carritoVenta : [];
+        comprobanteBase64 = borrador.comprobanteBase64 || null;
+        document.getElementById('vtaNotas').value = borrador.vtaNotas || '';
+        if (borrador.vtaCanal) document.getElementById('vtaCanal').value = borrador.vtaCanal;
+        if (borrador.vtaMetodoPago) document.getElementById('vtaMetodoPago').value = borrador.vtaMetodoPago;
+        if (comprobanteBase64) {
+          document.getElementById('imgComprobantePreview').src = comprobanteBase64;
+          document.getElementById('previewComprobanteContainer').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('No se pudo recuperar el borrador de venta:', error);
+      }
+    }
+
+    async function borrarBorradorVenta() {
+      if (!usuarioActual || !('indexedDB' in window)) return;
+      try {
+        const db = await abrirBaseDatosBorradores();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(BORRADORES_STORE, 'readwrite');
+          tx.objectStore(BORRADORES_STORE).delete(usuarioActual.id);
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        });
+        db.close();
+      } catch (error) {
+        console.error('No se pudo borrar el borrador de venta:', error);
+      }
     }
 
     async function guardarComprobanteEnStorage(dataUrl) {
@@ -1077,6 +1165,7 @@
       };
 
       carritoVenta.push(item);
+      guardarBorradorVenta();
 
       if (tipoVenta === 'Perfume Sellado') {
         const quiereRegalo = confirm(`🎁 ¡PROMOCIÓN DE REGALO!\n\n¿Deseas agregar un Decant de 3ml DE REGALO para esta compra de "${perfumeObj.nombre}"?`);
@@ -1178,6 +1267,7 @@
       };
 
       carritoVenta.push(regaloItem);
+      guardarBorradorVenta();
       cerrarModalRegalo();
       renderizarCarrito();
       alert(`¡Decant de 3ml de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
@@ -1186,6 +1276,7 @@
     function eliminarDelCarrito(index) {
       carritoVenta.splice(index, 1);
       renderizarCarrito();
+      guardarBorradorVenta();
     }
 
     function renderizarCarrito() {
@@ -1326,6 +1417,7 @@
           document.getElementById('vtaNotas').value = '';
           document.getElementById('vtaFotoComprobante').value = '';
           document.getElementById('previewComprobanteContainer').classList.add('hidden');
+          await borrarBorradorVenta();
           renderizarCarrito();
           document.getElementById('itemBuscador').value = '';
           actualizarOpcionesVenta();
@@ -1338,6 +1430,12 @@
         btnSubmit.disabled = false;
         btnSubmit.innerText = '✅ Procesar Venta Completa';
       }
+    });
+
+    ['vtaNotas', 'vtaCanal', 'vtaMetodoPago'].forEach(id => {
+      const campo = document.getElementById(id);
+      campo.addEventListener('input', guardarBorradorVenta);
+      campo.addEventListener('change', guardarBorradorVenta);
     });
 
     async function cargarHistorial() {
