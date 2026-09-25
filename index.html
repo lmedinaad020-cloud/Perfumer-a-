@@ -1817,13 +1817,13 @@
 
       if (error) alert('Error al marcar salida: ' + error.message);
       else {
-        alert(`¡Salida registrada! Trabajaste un total de ${horasTrabajadas} hrs.`);
+        alert('¡Salida registrada correctamente!');
         cargarEstadoAsistencia();
       }
     }
 
     async function cargarHistorialAsistencia() {
-      let query = client.from('asistencia').select('*').order('fecha_ingreso', { ascending: false }).limit(20);
+      let query = client.from('asistencia').select('*').order('fecha_ingreso', { ascending: false }).limit(30);
       
       if (!esAdmin()) {
         query = query.eq('vendedor_email', usuarioActual.email);
@@ -1831,45 +1831,60 @@
 
       const { data } = await query;
       listaAsistenciaCache = data || [];
-      const contenedor = document.getElementById('listaAsistencia');
+      const cont = document.getElementById('listaAsistencia');
 
       if (!listaAsistenciaCache.length) {
-        contenedor.innerHTML = '<p class="empty-msg">No hay registros de asistencia aún.</p>';
+        cont.innerHTML = '<p class="empty-msg">No hay registros de asistencia aún.</p>';
         return;
       }
 
-      contenedor.innerHTML = listaAsistenciaCache.map(a => `
-        <div class="stock-item">
-          <div>
-            <span class="badge">${a.vendedor_email}</span>
-            <p style="margin:5px 0 0; font-size:0.8rem; color:var(--ivory);">
-              <strong>Ingreso:</strong> ${new Date(a.fecha_ingreso).toLocaleString()}
-            </p>
-            <p style="margin:2px 0 0; font-size:0.8rem; color:var(--ivory);">
-              <strong>Salida:</strong> ${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '⚠️ En curso'}
-            </p>
-            ${a.horas_trabajadas ? `<p style="margin:4px 0 0; font-size:0.78rem; color:var(--gold-light);">⏱️ Total laborado: ${a.horas_trabajadas} hrs</p>` : ''}
+      cont.innerHTML = listaAsistenciaCache.map(r => {
+        const ingreso = new Date(r.fecha_ingreso);
+        const salida = r.fecha_salida ? new Date(r.fecha_salida) : null;
+        
+        return `
+          <div class="stock-item" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <strong>👤 ${r.vendedor_email}</strong><br>
+              <span style="font-size:0.78rem; color:var(--muted);">
+                Entrada: ${ingreso.toLocaleDateString()} - ${ingreso.toLocaleTimeString()}
+              </span><br>
+              <span style="font-size:0.78rem; color:${salida ? 'var(--muted)' : 'var(--gold-light)'};">
+                Salida: ${salida ? salida.toLocaleTimeString() : '⏳ En turno activo...'}
+              </span>
+            </div>
+            <div>
+              <span class="badge ${salida ? 'badge-ok' : 'badge-low'}">
+                ${salida ? `⏱️ ${r.horas_trabajadas || 0} hrs` : '🟢 ACTIVO'}
+              </span>
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function exportarAsistenciaExcel() {
-      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el reporte de asistencia.');
-      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay registros de asistencia para exportar.');
-      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar la asistencia.');
+      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay datos de asistencia para exportar.');
+      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Vendedor", "Fecha / Hora Ingreso", "Fecha / Hora Salida", "Horas Trabadas"]
+        ["ID", "Trabajador", "Fecha Ingreso", "Hora Ingreso", "Fecha Salida", "Hora Salida", "Total Horas Trabajadas", "Estado"]
       ];
 
       listaAsistenciaCache.forEach(a => {
+        const ing = new Date(a.fecha_ingreso);
+        const sal = a.fecha_salida ? new Date(a.fecha_salida) : null;
+
         datosExcel.push([
           a.id || '',
           a.vendedor_email || '',
-          new Date(a.fecha_ingreso).toLocaleString(),
-          a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : 'En curso',
-          a.horas_trabajadas || 0
+          ing.toLocaleDateString(),
+          ing.toLocaleTimeString(),
+          sal ? sal.toLocaleDateString() : 'N/A',
+          sal ? sal.toLocaleTimeString() : 'N/A',
+          a.horas_trabajadas || 0,
+          sal ? 'FINALIZADO' : 'EN TURNO'
         ]);
       });
 
