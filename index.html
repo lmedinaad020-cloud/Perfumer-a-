@@ -472,7 +472,16 @@
   <script>
     const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
-    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage
+      }
+    });
+
+    const COMPROBANTES_BUCKET = 'comprobantes';
 
     const ADMIN_EMAILS = ['diego@alpha.com', 'luis@alpha.com', 'mau@alpha.com'];
 
@@ -501,6 +510,24 @@
     function esAdmin() {
       return usuarioActual && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(usuarioActual.email.toLowerCase());
     }
+
+    // Restaurar la sesión persistente al volver a abrir o cambiar de app.
+    client.auth.getSession().then(({ data, error }) => {
+      if (error) console.error('No se pudo recuperar la sesión:', error.message);
+      if (data?.session?.user) {
+        usuarioActual = data.session.user;
+        iniciarApp();
+      }
+    });
+
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        usuarioActual = null;
+        if (intervalTimer) clearInterval(intervalTimer);
+        document.getElementById('sec-app').classList.add('hidden');
+        document.getElementById('sec-login').classList.remove('hidden');
+      }
+    });
 
     document.getElementById('formLogin').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -539,8 +566,8 @@
 
     async function cerrarSesion() {
       if (intervalTimer) clearInterval(intervalTimer);
-      await client.auth.signOut();
-      location.reload();
+      const { error } = await client.auth.signOut();
+      if (error) alert('No se pudo cerrar sesión: ' + error.message);
     }
 
     function mostrarTab(tab) {
@@ -974,6 +1001,28 @@
       reader.readAsDataURL(file);
     }
 
+    async function guardarComprobanteEnStorage(dataUrl) {
+      if (!dataUrl) return null;
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const ruta = `${usuarioActual.id}/${crypto.randomUUID()}.jpg`;
+      const { error } = await client.storage.from(COMPROBANTES_BUCKET).upload(ruta, blob, {
+        contentType: 'image/jpeg',
+        upsert: false
+      });
+      if (error) throw new Error(`No se pudo guardar el comprobante: ${error.message}`);
+      return ruta;
+    }
+
+    async function obtenerUrlComprobante(valor) {
+      if (!valor) return null;
+      // Compatibilidad con ventas antiguas que guardaron la imagen como Base64.
+      if (valor.startsWith('data:image/')) return valor;
+      const { data, error } = await client.storage.from(COMPROBANTES_BUCKET).createSignedUrl(valor, 300);
+      if (error) throw new Error(`No se pudo abrir el comprobante: ${error.message}`);
+      return data.signedUrl;
+    }
+
     function agregarAlCarrito() {
       const perfumeId = document.getElementById('itemPerfume').value;
       const tipoVenta = document.getElementById('itemTipo').value;
@@ -1234,6 +1283,10 @@
         
         const gananciaNetaVenta = totalMonto - totalCosto;
 
+        const rutaComprobante = comprobanteBase64
+          ? await guardarComprobanteEnStorage(comprobanteBase64)
+          : null;
+
         for (const item of carritoVenta) {
           if (item.tipo === 'Perfume Sellado') {
             const perf = listaProductos.find(p => p.id === item.producto_id);
@@ -1259,7 +1312,7 @@
           vendedor_email: usuarioActual.email,
           ubicacion_venta: `${canal} (${metodoPago})`,
           detalles: carritoVenta,
-          comprobante_url: comprobanteBase64 || null,
+          comprobante_url: rutaComprobante,
           notas: notasTexto || null
         };
 
@@ -1669,11 +1722,16 @@
       }
     }
 
-    function abrirModalComprobante(idx) {
+    async function abrirModalComprobante(idx) {
       const venta = listaVentasCache[idx];
       if (venta && venta.comprobante_url) {
-        document.getElementById('modalImgComprobante').src = venta.comprobante_url;
-        document.getElementById('modalComprobante').classList.remove('hidden');
+        try {
+          const url = await obtenerUrlComprobante(venta.comprobante_url);
+          document.getElementById('modalImgComprobante').src = url;
+          document.getElementById('modalComprobante').classList.remove('hidden');
+        } catch (error) {
+          alert(error.message);
+        }
       }
     }
 
