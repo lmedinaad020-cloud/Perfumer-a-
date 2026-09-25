@@ -126,7 +126,7 @@
     .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
 
     .nota-box { background: rgba(201,144,54,0.12); border-left: 3px solid var(--gold); padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; margin: 6px 0; color: #f6f0e7; }
-    .stock-item { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+    .stock-item { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
 
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
@@ -1842,15 +1842,13 @@
         <div class="stock-item">
           <div>
             <span class="badge">${a.vendedor_email}</span>
-            <p style="margin:5px 0 2px; font-size:0.83rem;">
-              <strong>Entrada:</strong> ${new Date(a.fecha_ingreso).toLocaleString()}
+            <p style="margin:5px 0 0; font-size:0.8rem; color:var(--ivory);">
+              <strong>Ingreso:</strong> ${new Date(a.fecha_ingreso).toLocaleString()}
             </p>
-            <p style="margin:0 0 5px; font-size:0.83rem;">
-              <strong>Salida:</strong> ${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '<span style="color:var(--warning);">En curso...</span>'}
+            <p style="margin:2px 0 0; font-size:0.8rem; color:var(--ivory);">
+              <strong>Salida:</strong> ${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '⚠️ En curso'}
             </p>
-            <p style="margin:0; font-size:0.75rem; color:var(--gold-light);">
-              Horas trabajadas: <strong>${a.horas_trabajadas ? a.horas_trabajadas + ' hrs' : '--'}</strong>
-            </p>
+            ${a.horas_trabajadas ? `<p style="margin:4px 0 0; font-size:0.78rem; color:var(--gold-light);">⏱️ Total laborado: ${a.horas_trabajadas} hrs</p>` : ''}
           </div>
         </div>
       `).join('');
@@ -1862,7 +1860,7 @@
       if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Vendedor / Correo", "Fecha y Hora Ingreso", "Fecha y Hora Salida", "Horas Trabajadas"]
+        ["ID", "Vendedor", "Fecha / Hora Ingreso", "Fecha / Hora Salida", "Horas Trabadas"]
       ];
 
       listaAsistenciaCache.forEach(a => {
@@ -1876,16 +1874,6 @@
       });
 
       const ws = XLSX.utils.aoa_to_sheet(datosExcel);
-      const colWidths = datosExcel[0].map((col, colIdx) => {
-        let maxLen = col.toString().length;
-        datosExcel.forEach(row => {
-          const val = row[colIdx] ? row[colIdx].toString() : '';
-          if (val.length > maxLen) maxLen = val.length;
-        });
-        return { wch: Math.min(Math.max(maxLen + 3, 10), 50) };
-      });
-      ws['!cols'] = colWidths;
-
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
 
