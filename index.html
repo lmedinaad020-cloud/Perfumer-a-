@@ -1180,7 +1180,7 @@
           ubicacion_venta: `${canal} (${metodoPago})`,
           detalles: carritoVenta,
           comprobante_url: comprobanteBase64 || null,
-          notas: notasTexto || null // SE GUARDA LA NOTA O OBSERVACIÓN
+          notas: notasTexto || null
         };
 
         const { error } = await client.from('ventas').insert([venta]);
@@ -1295,7 +1295,7 @@
           ganNeta = montoVenta * 0.50;
         }
 
-        v._gananciaCalculada = ganNeta; // GUARDAMOS VALOR TEMPORAL DE GANANCIA
+        v._gananciaCalculada = ganNeta;
 
         grupos[claveFechaLocal].ventas.push({ venta: v, indexGlobal: index, gananciaNetaCalculada: ganNeta });
         grupos[claveFechaLocal].totalGanado += montoVenta;
@@ -1496,7 +1496,6 @@
       });
     }
 
-    // NUEVO GRÁFICO 2: RENDIMIENTO POR VENDEDOR
     function actualizarGraficoVendedores() {
       const ctx = document.getElementById('chartVentasVendedor');
       if (!ctx) return;
@@ -1523,7 +1522,7 @@
 
       ventasFiltradas.forEach(v => {
         let vend = v.vendedor_email || 'Sin Asignar';
-        vend = vend.split('@')[0]; // Muestra el nombre corto antes del @
+        vend = vend.split('@')[0];
 
         if (!resumenVendedores[vend]) {
           resumenVendedores[vend] = 0;
