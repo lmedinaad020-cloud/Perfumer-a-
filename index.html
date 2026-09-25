@@ -126,6 +126,7 @@
     .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
 
     .nota-box { background: rgba(201,144,54,0.12); border-left: 3px solid var(--gold); padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; margin: 6px 0; color: #f6f0e7; }
+    .stock-item { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
 
     h2, h3, h4 { color: var(--ivory); } h3 { margin-top: 0; font-family: Georgia, serif; font-weight: 500; letter-spacing: .04em; }
     p { color: var(--muted); } #userLogged { color: var(--gold-light) !important; }
@@ -1768,7 +1769,7 @@
       
       function actualizar() {
         const ahora = new Date();
-        const diffMs = me - fechaIngreso;
+        const diffMs = ahora - fechaIngreso;
         const totalSegs = Math.floor(diffMs / 1000);
         
         const hrs = String(Math.floor(totalSegs / 3600)).padStart(2, '0');
@@ -1841,11 +1842,15 @@
         <div class="stock-item">
           <div>
             <span class="badge">${a.vendedor_email}</span>
-            <p style="margin:5px 0 2px; font-size:0.8rem;">Entrada: <strong>${new Date(a.fecha_ingreso).toLocaleString()}</strong></p>
-            <p style="margin:0; font-size:0.8rem;">Salida: <strong>${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '<span style="color:var(--gold-light);">En Curso...</span>'}</strong></p>
-          </div>
-          <div style="text-align:right;">
-            <p class="price" style="margin:0; font-size:0.9rem;">${a.horas_trabajadas ? `${a.horas_trabajadas} hrs` : 'Trabajando'}</p>
+            <p style="margin:5px 0 2px; font-size:0.83rem;">
+              <strong>Entrada:</strong> ${new Date(a.fecha_ingreso).toLocaleString()}
+            </p>
+            <p style="margin:0 0 5px; font-size:0.83rem;">
+              <strong>Salida:</strong> ${a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : '<span style="color:var(--warning);">En curso...</span>'}
+            </p>
+            <p style="margin:0; font-size:0.75rem; color:var(--gold-light);">
+              Horas trabajadas: <strong>${a.horas_trabajadas ? a.horas_trabajadas + ' hrs' : '--'}</strong>
+            </p>
           </div>
         </div>
       `).join('');
@@ -1853,10 +1858,11 @@
 
     function exportarAsistenciaExcel() {
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el reporte de asistencia.');
-      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay datos de asistencia para exportar.');
+      if (!listaAsistenciaCache || !listaAsistenciaCache.length) return alert('No hay registros de asistencia para exportar.');
+      if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
 
       const datosExcel = [
-        ["ID", "Trabajador / Email", "Fecha/Hora Entrada", "Fecha/Hora Salida", "Horas Trabajadas"]
+        ["ID", "Vendedor / Correo", "Fecha y Hora Ingreso", "Fecha y Hora Salida", "Horas Trabajadas"]
       ];
 
       listaAsistenciaCache.forEach(a => {
@@ -1864,13 +1870,21 @@
           a.id || '',
           a.vendedor_email || '',
           new Date(a.fecha_ingreso).toLocaleString(),
-          a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : 'EN CURSO',
-          a.horas_trabajadas ? parseFloat(a.horas_trabajadas) : 0
+          a.fecha_salida ? new Date(a.fecha_salida).toLocaleString() : 'En curso',
+          a.horas_trabajadas || 0
         ]);
       });
 
       const ws = XLSX.utils.aoa_to_sheet(datosExcel);
-      ws['!cols'] = [{ wch: 8 }, { wch: 25 }, { wch: 22 }, { wch: 22 }, { wch: 18 }];
+      const colWidths = datosExcel[0].map((col, colIdx) => {
+        let maxLen = col.toString().length;
+        datosExcel.forEach(row => {
+          const val = row[colIdx] ? row[colIdx].toString() : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        return { wch: Math.min(Math.max(maxLen + 3, 10), 50) };
+      });
+      ws['!cols'] = colWidths;
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
