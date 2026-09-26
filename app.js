@@ -1730,7 +1730,7 @@
       XLSX.writeFile(wb, `Reporte_Asistencia_ALPHA_${fechaHoy}.xlsx`);
     }
     // Cargar el archivo de sonido
-const sonidoVenta = new Audio('./assets/venta.mp3');
+const sonidoVenta = new Audio('assets/venta.mp3');
 
 // Función para procesar/registrar la venta
 async function registrarVenta(datosVenta) {
