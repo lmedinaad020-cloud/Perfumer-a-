@@ -1729,3 +1729,28 @@
       const fechaHoy = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `Reporte_Asistencia_ALPHA_${fechaHoy}.xlsx`);
     }
+    // Cargar el archivo de sonido
+const sonidoVenta = new Audio('./assets/venta.mp3');
+
+// Función para procesar/registrar la venta
+async function registrarVenta(datosVenta) {
+    try {
+        // Tu lógica existente para guardar en Supabase u otro servicio
+        const { data, error } = await supabase
+            .from('ventas')
+            .insert([datosVenta]);
+
+        if (error) throw error;
+
+        // --- REPRODUCIR SONIDO AL TENER ÉXITO ---
+        sonidoVenta.currentTime = 0; // Reinicia el audio si se presiona varias veces seguidas
+        sonidoVenta.play().catch(err => {
+            console.warn("El navegador bloqueó la reproducción automática del audio:", err);
+        });
+
+        alert("¡Venta realizada con éxito!");
+
+    } catch (error) {
+        console.error("Error al registrar la venta:", error.message);
+    }
+}
