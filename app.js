@@ -481,7 +481,7 @@
         if (tamanoDecant === '2ml') return 15;
       }
 
-      if (nombreNorm.includes('9PM') || nombreNorm.includes('NIGHT OUT')) {
+      if (nombreNorm.includes('NIGHT OUT') || nombreNorm.includes('NIGHT OUT')) {
         if (tamanoDecant === '3ml') return 20;
         if (tamanoDecant === '5ml') return 30;
         if (tamanoDecant === '10ml') return 40;
