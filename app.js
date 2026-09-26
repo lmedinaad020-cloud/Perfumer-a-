@@ -1,4 +1,4 @@
-    const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
+const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InptdnV1ZWl6cmVocWliampjYmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NTY0MDMsImV4cCI6MjEwNTMzMjQwM30.HVgy61_hS7ecm7sHMz2h5mKtb7r1LXesIjfoH5lZG8M';
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
@@ -8,6 +8,9 @@
         storage: window.localStorage
       }
     });
+
+    // Cargar el archivo de sonido
+    const sonidoVenta = new Audio('./assets/venta.mp3');
 
     const COMPROBANTES_BUCKET = 'comprobantes';
     const BORRADORES_DB = 'alpha-perfumes-local';
@@ -481,7 +484,7 @@
         if (tamanoDecant === '2ml') return 15;
       }
 
-      if (nombreNorm.includes('NIGHT OUT') || nombreNorm.includes('NIGHT OUT')) {
+      if (nombreNorm.includes('9PM NIGHT OUT') || nombreNorm.includes('NIGHT OUT')) {
         if (tamanoDecant === '3ml') return 20;
         if (tamanoDecant === '5ml') return 30;
         if (tamanoDecant === '10ml') return 40;
@@ -875,6 +878,7 @@
       renderizarCarrito();
       guardarBorradorVenta();
     }
+
     function eliminarDelCarrito(index) {
       carritoVenta.splice(index, 1);
       renderizarCarrito();
@@ -998,6 +1002,7 @@
         throw error;
       }
     }
+
     document.getElementById('formVenta').addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -1049,6 +1054,13 @@
           alert('Error al registrar la venta: ' + error.message);
         } else {
           ventaGuardada = true;
+
+          // --- REPRODUCIR SONIDO AL TENER ÉXITO ---
+          sonidoVenta.currentTime = 0; // Reinicia el audio si se presiona varias veces seguidas
+          sonidoVenta.play().catch(err => {
+              console.warn("El navegador bloqueó la reproducción automática del audio:", err);
+          });
+
           mostrarAviso('Venta registrada correctamente.', 'success');
           carritoVenta = [];
           comprobanteBase64 = null;
@@ -1729,28 +1741,3 @@
       const fechaHoy = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `Reporte_Asistencia_ALPHA_${fechaHoy}.xlsx`);
     }
-    // Cargar el archivo de sonido
-const sonidoVenta = new Audio('assets/venta.mp3');
-
-// Función para procesar/registrar la venta
-async function registrarVenta(datosVenta) {
-    try {
-        // Tu lógica existente para guardar en Supabase u otro servicio
-        const { data, error } = await supabase
-            .from('ventas')
-            .insert([datosVenta]);
-
-        if (error) throw error;
-
-        // --- REPRODUCIR SONIDO AL TENER ÉXITO ---
-        sonidoVenta.currentTime = 0; // Reinicia el audio si se presiona varias veces seguidas
-        sonidoVenta.play().catch(err => {
-            console.warn("El navegador bloqueó la reproducción automática del audio:", err);
-        });
-
-        alert("¡Venta realizada con éxito!");
-
-    } catch (error) {
-        console.error("Error al registrar la venta:", error.message);
-    }
-}
