@@ -10,7 +10,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     });
 
     // Cargar el archivo de sonido
-    const sonidoVenta = new Audio('./assets/venta.mp3');
+    const sonidoVenta = new Audio('/assets/venta.mp3');
 
     const COMPROBANTES_BUCKET = 'comprobantes';
     const BORRADORES_DB = 'alpha-perfumes-local';
