@@ -45,9 +45,9 @@
 
   function getDecantPrices(name) {
     const normalized = norm(name).toUpperCase();
-    if (normalized.includes('AL HARAMAIN') || normalized.includes('GOLD EDITION')) return [25, 45, 65];
-    if (normalized.includes('LIQUID BRUN') || normalized.includes('LIQUID BRUM') || normalized.includes('NIGHT OUT')) return [20, 30, 40];
-    return [15, 25, 35];
+    if (normalized.includes('AL HARAMAIN') || normalized.includes('GOLD EDITION')) return [25, 45, 65, 195];
+    if (normalized.includes('LIQUID BRUN') || normalized.includes('LIQUID BRUM') || normalized.includes('NIGHT OUT')) return [20, 30, 40, 120];
+    return [15, 25, 35, 105];
   }
 
   function deduplicateProducts(items) {
@@ -115,7 +115,7 @@
       const decantHeading = document.createElement('p');
       decantHeading.className = 'decant-prices-heading';
       decantHeading.textContent = 'Precios de decant';
-      ['3ml', '5ml', '10ml'].forEach((size, index) => {
+      ['3ml', '5ml', '10ml', '30ml'].forEach((size, index) => {
         const row = document.createElement('p');
         row.className = 'decant-price-row';
         row.textContent = `${size}: S/ ${values[index].toFixed(2)}`;
