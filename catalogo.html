@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#031a34">
+  <title>Catálogo | ALPHA Perfumes y Decants</title>
+  <link rel="icon" type="image/jpeg" href="assets/alpha-logo.jpeg">
+  <link rel="stylesheet" href="catalogo.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+  <script defer src="catalogo.js"></script>
+</head>
+<body>
+  <main class="catalog-shell">
+    <header class="catalog-header">
+      <a class="brand" href="index.html" aria-label="Volver a ALPHA">
+        <img src="assets/alpha-logo.jpeg" alt="ALPHA Perfumes y Decants">
+        <span class="brand-name">ALPHA</span>
+        <span class="brand-tagline">PERFUMES Y DECANTS</span>
+      </a>
+      <p class="eyebrow">CATÁLOGO DE FRAGANCIAS</p>
+      <h1>Encuentra tu próxima esencia</h1>
+      <p class="intro">Toca la imagen o el nombre para escuchar su audio y ver los precios de decant.</p>
+    </header>
+
+    <section class="catalog-panel" aria-label="Catálogo de perfumes">
+      <div class="panel-heading">
+        <div><p class="eyebrow">NUESTRA SELECCIÓN</p><h2>Perfumes disponibles</h2></div>
+        <span id="product-count" class="count">Cargando…</span>
+      </div>
+      <div class="search-wrap"><label class="sr-only" for="catalog-search">Buscar perfume</label><input id="catalog-search" type="search" placeholder="Buscar un perfume…" autocomplete="off"></div>
+      <div id="catalog-grid" class="catalog-grid" aria-live="polite"><p class="message">Cargando perfumes…</p></div>
+    </section>
+    <footer><a href="index.html">Volver a la plataforma ALPHA</a></footer>
+    <div id="catalog-status" class="sr-only" aria-live="polite"></div>
+  </main>
+</body>
+</html>

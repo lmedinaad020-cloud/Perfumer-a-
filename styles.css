@@ -187,3 +187,5 @@
   .inventory-sort select { max-width: none; }
   .report-filters button { width: 100%; }
 }
+  .catalog-entry { display:block; width:max-content; max-width:100%; margin:12px auto; padding:9px 16px; border:1px solid var(--border); border-radius:999px; color:var(--gold-light); text-decoration:none; text-align:center; }
+  .catalog-entry:hover { background:rgba(201,144,54,.16); border-color:var(--gold-light); }

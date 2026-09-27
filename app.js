@@ -145,6 +145,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       
       document.getElementById('grpTamanoVacios').classList.toggle('hidden', !esVacio);
       document.getElementById('grpTamanoBotella').classList.toggle('hidden', esVacio);
+      document.getElementById('grpAudioPerfume').classList.toggle('hidden', esVacio);
       
       document.getElementById('lblPrecioStock').innerText = esVacio ? 'Costo Total del Lote (S/)' : 'Costo Comprado (S/)';
       document.getElementById('lblCantidadStock').innerText = esVacio ? 'Cantidad de envases en el Lote' : 'Cantidad inicial de frascos';
@@ -258,6 +259,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               ${esAdmin() ? `
                 <div class="product-card-actions">
                   <button onclick="editarProducto(${p.id})" class="btn-sec" style="padding:4px 8px; font-size:0.75rem;">✏️ Editar Producto</button>
+                  ${p.tipo !== 'Decant Vacío' ? `<button onclick="editarAudioProducto(${p.id})" class="btn-sec" style="padding:4px 8px; font-size:0.75rem;">🎵 ${p.audio_url ? 'Cambiar' : 'Agregar'} audio</button>` : ''}
                   <button onclick="sumarStockOLote(${p.id})" class="btn-add">➕ Ingresar Nuevo Lote / Stock</button>
                   ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
                   ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
@@ -355,7 +357,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           precio: perfumeSelladoObj.precio,
           precio_sugerido: perfumeSelladoObj.precio_sugerido,
           stock: 1,
-          imagen_url: perfumeSelladoObj.imagen_url
+          imagen_url: perfumeSelladoObj.imagen_url,
+          audio_url: perfumeSelladoObj.audio_url || null
         }]);
       }
 
@@ -404,6 +407,41 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         alert('¡Producto actualizado correctamente!');
         cargarTodo();
       }
+    }
+
+    async function editarAudioProducto(id) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden gestionar audios.');
+      const producto = listaProductos.find(p => p.id === id);
+      if (!producto) return;
+
+      const selector = document.createElement('input');
+      selector.type = 'file';
+      selector.accept = 'audio/*';
+      selector.addEventListener('change', async () => {
+        const audioFile = selector.files[0];
+        if (!audioFile) return;
+        if (!audioFile.type.startsWith('audio/')) return alert('Selecciona un archivo de audio válido.');
+        if (audioFile.size > 20 * 1024 * 1024) return alert('El audio debe pesar menos de 20 MB.');
+
+        const extension = (audioFile.name.split('.').pop() || 'audio').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const rutaAudio = `${crypto.randomUUID()}.${extension || 'audio'}`;
+        const { error: errorAudio } = await client.storage.from('catalogo-audios').upload(rutaAudio, audioFile, {
+          contentType: audioFile.type,
+          cacheControl: '3600',
+          upsert: false
+        });
+        if (errorAudio) return alert('No se pudo subir el audio. Revisa la configuración de almacenamiento: ' + errorAudio.message);
+
+        const audioUrl = client.storage.from('catalogo-audios').getPublicUrl(rutaAudio).data.publicUrl;
+        const { error } = await client.from('productos').update({ audio_url: audioUrl }).eq('id', id);
+        if (error) {
+          await client.storage.from('catalogo-audios').remove([rutaAudio]);
+          return alert('No se pudo asociar el audio al perfume: ' + error.message);
+        }
+        alert(`Audio actualizado para ${producto.nombre}.`);
+        cargarTodo();
+      });
+      selector.click();
     }
 
     async function eliminarProducto(id, nombre) {
@@ -923,6 +961,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const tipo = document.getElementById('stkTipo').value;
       const nombreInput = document.getElementById('stkNombre').value.trim();
       const imagenInput = document.getElementById('stkImagen').value.trim();
+      const audioFile = document.getElementById('stkAudio').files[0];
       const cantidadReg = parseInt(document.getElementById('stkCantidad').value) || 1;
       const precioMontoInput = parseFloat(document.getElementById('stkPrecio').value) || 0;
       const precioSugeridoInput = parseFloat(document.getElementById('stkPrecioSugerido').value) || 0;
@@ -946,11 +985,32 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         precio: costoUnitarioCalculado,
         precio_sugerido: precioSugeridoInput,
         stock: cantidadReg,
-        imagen_url: imagenInput || null
+        imagen_url: imagenInput || null,
+        audio_url: null
       };
 
+      if (audioFile) {
+        if (!audioFile.type.startsWith('audio/')) return alert('Selecciona un archivo de audio válido.');
+        if (audioFile.size > 20 * 1024 * 1024) return alert('El audio debe pesar menos de 20 MB.');
+        const extension = (audioFile.name.split('.').pop() || 'audio').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const rutaAudio = `${crypto.randomUUID()}.${extension || 'audio'}`;
+        const { error: errorAudio } = await client.storage.from('catalogo-audios').upload(rutaAudio, audioFile, {
+          contentType: audioFile.type,
+          cacheControl: '3600',
+          upsert: false
+        });
+        if (errorAudio) return alert('No se pudo subir el audio. Revisa la configuración de almacenamiento: ' + errorAudio.message);
+        nuevo.audio_url = client.storage.from('catalogo-audios').getPublicUrl(rutaAudio).data.publicUrl;
+      }
+
       const { error } = await client.from('productos').insert([nuevo]);
-      if (error) alert('Error: ' + error.message);
+      if (error) {
+        if (nuevo.audio_url) {
+          const rutaAudio = nuevo.audio_url.split('/catalogo-audios/').pop();
+          if (rutaAudio) await client.storage.from('catalogo-audios').remove([decodeURIComponent(rutaAudio)]);
+        }
+        alert('Error: ' + error.message);
+      }
       else {
         alert('Registrado correctamente');
         document.getElementById('formStock').reset();
