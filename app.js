@@ -533,7 +533,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       if (tamanoDecant === '5ml') return 25;
       if (tamanoDecant === '10ml') return 35;
       if (tamanoDecant === '2ml') return 10;
-      if (tamanoDecant === '30ml') return 10;
+      if (tamanoDecant === '30ml') return 90;
 
       return parseFloat(perfumeObj.precio_sugerido || 0);
     }
