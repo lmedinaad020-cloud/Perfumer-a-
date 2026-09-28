@@ -523,7 +523,13 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         if (tamanoDecant === '30ml') return 120;
         if (tamanoDecant === '2ml') return 15;
       }
-
+      if (nombreNorm.includes('VALENTINO INTENSE') || nombreNorm.includes('VALENTINO INTENSE')) {
+        if (tamanoDecant === '3ml') return 30;
+        if (tamanoDecant === '5ml') return 45;
+        if (tamanoDecant === '10ml') return 80;
+        if (tamanoDecant === '30ml') return 240;
+        if (tamanoDecant === '2ml') return 20;
+      }
       if (nombreNorm.includes('9PM NIGHT OUT') || nombreNorm.includes('NIGHT OUT')) {
         if (tamanoDecant === '3ml') return 20;
         if (tamanoDecant === '5ml') return 30;
