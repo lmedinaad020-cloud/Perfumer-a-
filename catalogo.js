@@ -46,6 +46,7 @@
   function getDecantPrices(name) {
     const normalized = norm(name).toUpperCase();
     if (normalized.includes('AL HARAMAIN') || normalized.includes('GOLD EDITION')) return [25, 45, 65, 195];
+    if (normalized.includes('VALENTINO INTENSE') || normalized.includes('VALENTINO INTENSE')) return [30, 45, 80, 240];
     if (normalized.includes('LIQUID BRUN') || normalized.includes('LIQUID BRUM') || normalized.includes('NIGHT OUT')) return [20, 30, 40, 120];
     return [15, 25, 35, 90];
   }
