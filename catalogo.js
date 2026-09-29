@@ -47,7 +47,7 @@
     const normalized = norm(name).toUpperCase();
     if (normalized.includes('AL HARAMAIN') || normalized.includes('GOLD EDITION')) return [25, 45, 65, 195];
     if (normalized.includes('LIQUID BRUN') || normalized.includes('LIQUID BRUM') || normalized.includes('NIGHT OUT')) return [20, 30, 40, 120];
-    return [15, 25, 35, 105];
+    return [15, 25, 35, 90];
   }
 
   function deduplicateProducts(items) {
