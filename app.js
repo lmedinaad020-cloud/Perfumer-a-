@@ -11,6 +11,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     // Cargar el archivo de sonido
     const sonidoVenta = new Audio('assets/venta.mp3');
+    const sonidoMetaVentas = new Audio('assets/meta.mp3');
+    const sonidoFinJornada = new Audio('assets/alerta.mp3');
+    const AVISO_FIN_JORNADA_MS = 5 * 60 * 60 * 1000;
+    let avisoJornadaMostradoId = null;
 
     const COMPROBANTES_BUCKET = 'comprobantes';
     const BORRADORES_DB = 'alpha-perfumes-local';
@@ -38,6 +42,34 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     const PUNTO_EQUILIBRIO = 140;
     const META_DIARIA = 199;
+    let avisoMetaVentasFecha = null;
+
+    function fechaLocalClave(fecha = new Date()) {
+      return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+    }
+
+    async function comprobarMetaVentasDiaria() {
+      const hoy = fechaLocalClave();
+      if (avisoMetaVentasFecha === hoy) return;
+      const inicio = new Date();
+      inicio.setHours(0, 0, 0, 0);
+      const fin = new Date(inicio);
+      fin.setDate(fin.getDate() + 1);
+      const { data, error } = await client.from('ventas').select('monto_total')
+        .gte('fecha', inicio.toISOString()).lt('fecha', fin.toISOString());
+      if (error) {
+        console.warn('No se pudo comprobar la meta diaria de ventas:', error.message);
+        return;
+      }
+      const totalDia = (data || []).reduce((suma, venta) => suma + Number(venta.monto_total || 0), 0);
+      if (totalDia < META_DIARIA) return;
+      avisoMetaVentasFecha = hoy;
+      const mensaje = `¡Meta de ventas alcanzada! Hoy se vendieron S/ ${totalDia.toFixed(2)}.`;
+      sonidoMetaVentas.currentTime = 0;
+      sonidoMetaVentas.play().catch(errorAudio => console.warn('El navegador bloqueó el audio de la meta:', errorAudio));
+      mostrarAviso(mensaje, 'success');
+      alert(mensaje);
+    }
 
     const IMG_DEFAULT = 'https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg';
 
@@ -1352,6 +1384,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               console.warn("El navegador bloqueó la reproducción automática del audio:", err);
           });
 
+          await comprobarMetaVentasDiaria();
           mostrarAviso('Venta registrada correctamente.', 'success');
           const agotadosEnVenta = reservaStock.filter(r => r.mlAnterior !== undefined && Number(r.mlReservado) === 0);
           if (agotadosEnVenta.length) {
@@ -1944,13 +1977,47 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         const segs = String(totalSegs % 60).padStart(2, '0');
         
         document.getElementById('timerDisplay').innerText = `${hrs}:${mins}:${segs}`;
+        if (registroAsistenciaActivo && diffMs >= AVISO_FIN_JORNADA_MS) {
+          avisarFinJornada(registroAsistenciaActivo.id);
+        }
       }
 
       actualizar();
       intervalTimer = setInterval(actualizar, 1000);
     }
 
+    function avisarFinJornada(registroId) {
+      if (avisoJornadaMostradoId === registroId) return;
+      avisoJornadaMostradoId = registroId;
+      const mensaje = 'Fin de jornada: marca tu salida.';
+      sonidoFinJornada.currentTime = 0;
+      sonidoFinJornada.play().catch(error => console.warn('El navegador bloqueó el audio del aviso de jornada:', error));
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('ALPHA · Asistencia', {
+          body: mensaje,
+          icon: 'assets/alpha-logo.jpeg',
+          tag: `fin-jornada-${registroId}`
+        });
+      }
+      const aviso = document.getElementById('avisoApp');
+      if (aviso) {
+        aviso.textContent = mensaje;
+        aviso.className = 'toast-region is-visible';
+      }
+      alert(mensaje);
+    }
+
     async function marcarIngresoTrabajo() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { await Notification.requestPermission(); }
+        catch (error) { console.warn('No se pudo solicitar permiso de notificaciones:', error); }
+      }
+      // El gesto de iniciar jornada habilita el audio en navegadores móviles.
+      sonidoFinJornada.play().then(() => {
+        sonidoFinJornada.pause();
+        sonidoFinJornada.currentTime = 0;
+      }).catch(() => {});
       const confirmar = confirm(`¿Confirmas que estás INICIANDO tu jornada laboral como ${usuarioActual.email}?`);
       if (!confirmar) return;
 
