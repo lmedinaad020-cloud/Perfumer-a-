@@ -204,6 +204,24 @@
               </select>
             </div>
 
+            <div id="grpUbicacionStock" class="form-group">
+              <label>Ubicación del stock</label>
+              <select id="stkUbicacion">
+                <option value="Tienda Local">Tienda Local</option>
+                <option value="Alpha Móvil">Alpha Móvil</option>
+              </select>
+            </div>
+
+            <div id="grpPreciosDecant" class="form-group">
+              <label>Precios de venta por decant (S/)</label>
+              <div class="grid-2">
+                <div><label for="stkPrecioDecant3">3 ml (S/)</label><input type="number" min="0" step="0.01" id="stkPrecioDecant3" placeholder="Precio"></div>
+                <div><label for="stkPrecioDecant5">5 ml (S/)</label><input type="number" min="0" step="0.01" id="stkPrecioDecant5" placeholder="Precio"></div>
+                <div><label for="stkPrecioDecant10">10 ml (S/)</label><input type="number" min="0" step="0.01" id="stkPrecioDecant10" placeholder="Precio"></div>
+                <div><label for="stkPrecioDecant30">30 ml (S/)</label><input type="number" min="0" step="0.01" id="stkPrecioDecant30" placeholder="Precio"></div>
+              </div>
+            </div>
+
             <div id="grpTamanoVacios" class="form-group hidden">
               <label>Capacidad del envase vacío</label>
               <select id="stkTamanoVacios">

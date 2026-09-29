@@ -199,10 +199,13 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     function toggleCamposStock() {
       const stkTipoVal = document.getElementById('stkTipo').value;
       const esVacio = stkTipoVal === 'Decant Vacío';
+      const esPerfume = ['Perfume Sellado', 'Perfume para Decant'].includes(stkTipoVal);
       
       document.getElementById('grpTamanoVacios').classList.toggle('hidden', !esVacio);
       document.getElementById('grpTamanoBotella').classList.toggle('hidden', esVacio);
       document.getElementById('grpAudioPerfume').classList.toggle('hidden', esVacio);
+      document.getElementById('grpUbicacionStock').classList.toggle('hidden', !esPerfume);
+      document.getElementById('grpPreciosDecant').classList.toggle('hidden', stkTipoVal !== 'Perfume Sellado');
       
       document.getElementById('lblPrecioStock').innerText = esVacio ? 'Costo Total del Lote (S/)' : 'Costo Comprado (S/)';
       document.getElementById('lblCantidadStock').innerText = esVacio ? 'Cantidad de envases en el Lote' : 'Cantidad inicial de frascos';
@@ -246,15 +249,16 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       const gruposAbiertos = new Map();
       filtrados = filtrados.reduce((resultado, producto) => {
-        if (producto.tipo !== 'Perfume para Decant') {
+        if (!['Perfume para Decant', 'Perfume Sellado'].includes(producto.tipo)) {
           resultado.push(producto);
           return resultado;
         }
-        const clave = `${normalizarTexto(producto.nombre).trim()}|${normalizarTexto(producto.tamano || '')}`;
+        const clave = `${producto.tipo}|${normalizarTexto(producto.nombre).trim()}|${normalizarTexto(producto.tamano || '')}`;
         let grupo = gruposAbiertos.get(clave);
         if (!grupo) {
           grupo = {
-            esGrupoAbierto: true,
+            esGrupoAbierto: producto.tipo === 'Perfume para Decant',
+            tipo: producto.tipo,
             nombre: producto.nombre,
             tamano: producto.tamano || '100ml',
             imagen_url: producto.imagen_url,
@@ -270,7 +274,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           gruposAbiertos.set(clave, grupo);
           resultado.push(grupo);
         }
-        const ubicacion = producto.ubicacion_stock === 'Alpha Móvil' ? 'movil' : 'local';
+      const ubicacion = producto.ubicacion_stock === 'Alpha Móvil' ? 'movil' : 'local';
         const cantidadBotellas = Math.max(0, Number(producto.stock) || 0);
         const ml = Number(producto.ml_restantes ?? (cantidadBotellas * (parseInt(producto.tamano) || 100)));
         grupo[ubicacion] += cantidadBotellas;
@@ -296,24 +300,37 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       gruposAbiertosInventario = [];
       contGrid.innerHTML = filtrados.map(p => {
-        if (p.esGrupoAbierto) {
+        if (p.esGrupoAbierto || p.tipo === 'Perfume Sellado') {
           const grupoIdx = gruposAbiertosInventario.push(p) - 1;
           const agotado = p.stock <= 0;
           return `
             <div class="product-card">
               <div class="product-card-img-wrapper">
                 <img src="${p.imagen_url || IMG_DEFAULT}" class="product-card-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-                <span class="badge product-card-badge">ABIERTO (${p.tamano})</span>
+                <span class="badge product-card-badge">${p.esGrupoAbierto ? `ABIERTO (${p.tamano})` : `SELLADO (${p.tamano})`}</span>
               </div>
               <div class="product-card-body">
                 <h4 class="product-card-title">${p.nombre}</h4>
                 <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Tienda Local: <strong>${p.local}</strong> ${p.local === 1 ? 'frasco' : 'frascos'}</p>
                 <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Alpha Móvil: <strong>${p.movil}</strong> ${p.movil === 1 ? 'frasco' : 'frascos'}</p>
-                <p style="margin:6px 0;font-size:.75rem;color:var(--muted)">Contenido restante: ${p.mlLocal.toFixed(1)} ml local · ${p.mlMovil.toFixed(1)} ml Alpha Móvil</p>
-                ${agotado ? '<p style="margin:6px 0;color:var(--danger);font-size:.78rem;font-weight:700">⚠️ Sin frascos abiertos disponibles. Abre uno sellado.</p>' : ''}
+                ${p.esGrupoAbierto ? `<p style="margin:6px 0;font-size:.75rem;color:var(--muted)">Contenido restante: ${p.mlLocal.toFixed(1)} ml local · ${p.mlMovil.toFixed(1)} ml Alpha Móvil</p>` : ''}
+                ${agotado ? `<p style="margin:6px 0;color:var(--danger);font-size:.78rem;font-weight:700">${p.esGrupoAbierto ? '⚠️ Sin frascos abiertos disponibles. Abre uno sellado.' : '⚠️ Sin stock sellado disponible.'}</p>` : ''}
                 ${esAdmin() && !agotado ? `
                   <button type="button" class="btn-sec" style="width:100%;margin-top:8px" onclick="moverPerfumeAbierto(${grupoIdx})">↔️ Cambiar ubicación</button>
-                  <button type="button" class="btn-del" style="width:100%;margin-top:6px" onclick="eliminarUnPerfumeAbierto(${grupoIdx})">🗑️ Eliminar 1 perfume abierto</button>
+                  ${p.esGrupoAbierto ? `<button type="button" class="btn-del" style="width:100%;margin-top:6px" onclick="eliminarUnPerfumeAbierto(${grupoIdx})">🗑️ Eliminar 1 perfume abierto</button>` : ''}
+                ` : ''}
+                ${esAdmin() && p.tipo === 'Perfume Sellado' ? `
+                  <div class="product-card-actions" style="margin-top:10px">
+                    ${(p.filasLocal.concat(p.filasMovil)).map(fila => `
+                      <div style="border-top:1px solid rgba(255,255,255,.12);padding-top:8px;margin-top:4px">
+                        <small style="color:var(--muted)">${fila.ubicacion_stock || 'Tienda Local'} · ${fila.stock} unid.</small>
+                        <button onclick="editarProducto(${fila.id})" class="btn-sec" style="padding:4px 8px;font-size:.75rem">✏️ Editar Producto</button>
+                        <button onclick="editarAudioProducto(${fila.id})" class="btn-sec" style="padding:4px 8px;font-size:.75rem">🎵 ${fila.audio_url ? 'Cambiar' : 'Agregar'} audio</button>
+                        ${fila.stock > 0 ? `<button onclick="abrirPerfumeSellado(${fila.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
+                        <button onclick="eliminarProducto(${fila.id}, '${fila.nombre.replace(/'/g, "\\'")}')" class="btn-del" style="margin-top:2px">🗑️ Eliminar Producto</button>
+                      </div>
+                    `).join('')}
+                  </div>
                 ` : ''}
               </div>
             </div>
@@ -396,7 +413,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const grupo = gruposAbiertosInventario[grupoIdx];
       if (!grupo) return alert('No se encontró el perfume abierto. Actualiza el inventario e inténtalo de nuevo.');
 
-      const origenElegido = prompt(`¿Desde dónde moverás frascos de "${grupo.nombre}"?\n\n1. Tienda Local (${grupo.local})\n2. Alpha Móvil (${grupo.movil})`, grupo.local > 0 ? '1' : '2');
+      const etiqueta = grupo.esGrupoAbierto ? 'abiertos' : 'sellados';
+      const origenElegido = prompt(`¿Desde dónde moverás frascos ${etiqueta} de "${grupo.nombre}"?\n\n1. Tienda Local (${grupo.local})\n2. Alpha Móvil (${grupo.movil})`, grupo.local > 0 ? '1' : '2');
       if (origenElegido === null) return;
       const origen = origenElegido.trim() === '1' ? 'Tienda Local' : origenElegido.trim() === '2' ? 'Alpha Móvil' : null;
       if (!origen) return alert('Selecciona 1 para Tienda Local o 2 para Alpha Móvil.');
@@ -404,7 +422,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const destino = origen === 'Tienda Local' ? 'Alpha Móvil' : 'Tienda Local';
       const filasOrigen = origen === 'Tienda Local' ? grupo.filasLocal : grupo.filasMovil;
       const disponibles = filasOrigen.reduce((total, fila) => total + Math.max(0, Number(fila.stock) || 0), 0);
-      if (!disponibles) return alert(`No hay frascos abiertos disponibles en ${origen}.`);
+      if (!disponibles) return alert(`No hay frascos ${etiqueta} disponibles en ${origen}.`);
 
       const cantidadTexto = prompt(`¿Cuántos frascos mover de ${origen} a ${destino}?\nDisponibles: ${disponibles}`, '1');
       if (cantidadTexto === null) return;
@@ -426,7 +444,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).select('id').maybeSingle();
             if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
             cambios.push({ tipo: 'mover', id: fila.id, origen, destino, stock: stockAnterior });
-          } else {
+          } else if (grupo.esGrupoAbierto) {
             const mlAnterior = Number(fila.ml_restantes ?? (stockAnterior * (parseInt(fila.tamano) || 100)));
             const mlTrasladados = mlAnterior * mover / stockAnterior;
             const stockRestante = stockAnterior - mover;
@@ -441,6 +459,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               tamano: fila.tamano,
               precio: fila.precio,
               precio_sugerido: fila.precio_sugerido,
+              precio_decant_3ml: fila.precio_decant_3ml,
+              precio_decant_5ml: fila.precio_decant_5ml,
+              precio_decant_10ml: fila.precio_decant_10ml,
+              precio_decant_30ml: fila.precio_decant_30ml,
               stock: mover,
               ubicacion_stock: destino,
               ml_restantes: mlTrasladados,
@@ -452,6 +474,23 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               throw new Error(errorInsert?.message || 'No se pudo crear el registro en la ubicación de destino.');
             }
             cambios.push({ tipo: 'dividir', id: fila.id, nuevoId: nuevaFila.id, origen, destino, stockAnterior, mlAnterior: fila.ml_restantes, stockRestante });
+          } else {
+            const stockRestante = stockAnterior - mover;
+            const { data, error } = await client.from('productos').update({ stock: stockRestante })
+              .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).select('id').maybeSingle();
+            if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
+            const { data: nuevaFila, error: errorInsert } = await client.from('productos').insert([{
+              nombre: fila.nombre, tipo: fila.tipo, tamano: fila.tamano, precio: fila.precio,
+              precio_sugerido: fila.precio_sugerido, precio_decant_3ml: fila.precio_decant_3ml,
+              precio_decant_5ml: fila.precio_decant_5ml, precio_decant_10ml: fila.precio_decant_10ml,
+              precio_decant_30ml: fila.precio_decant_30ml, stock: mover, ubicacion_stock: destino,
+              imagen_url: fila.imagen_url, audio_url: fila.audio_url || null
+            }]).select('id').single();
+            if (errorInsert || !nuevaFila) {
+              await client.from('productos').update({ stock: stockAnterior }).eq('id', fila.id).eq('stock', stockRestante);
+              throw new Error(errorInsert?.message || 'No se pudo crear el registro en la ubicación de destino.');
+            }
+            cambios.push({ tipo: 'dividir', id: fila.id, nuevoId: nuevaFila.id, origen, destino, stockAnterior, stockRestante });
           }
           pendientes -= mover;
         }
@@ -462,7 +501,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             await client.from('productos').update({ ubicacion_stock: cambio.origen }).eq('id', cambio.id).eq('ubicacion_stock', cambio.destino);
           } else {
             await client.from('productos').delete().eq('id', cambio.nuevoId);
-            await client.from('productos').update({ stock: cambio.stockAnterior, ml_restantes: cambio.mlAnterior }).eq('id', cambio.id).eq('stock', cambio.stockRestante);
+            await client.from('productos').update(grupo.esGrupoAbierto ? { stock: cambio.stockAnterior, ml_restantes: cambio.mlAnterior } : { stock: cambio.stockAnterior }).eq('id', cambio.id).eq('stock', cambio.stockRestante);
           }
         }
         return alert('No se completó el cambio de ubicación: ' + error.message);
@@ -592,6 +631,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           tamano: perfumeSelladoObj.tamano || '100ml',
           precio: perfumeSelladoObj.precio,
           precio_sugerido: perfumeSelladoObj.precio_sugerido,
+          precio_decant_3ml: perfumeSelladoObj.precio_decant_3ml,
+          precio_decant_5ml: perfumeSelladoObj.precio_decant_5ml,
+          precio_decant_10ml: perfumeSelladoObj.precio_decant_10ml,
+          precio_decant_30ml: perfumeSelladoObj.precio_decant_30ml,
           stock: 1,
           ubicacion_stock: ubicacion,
           ml_restantes: mlInicial,
@@ -746,6 +789,11 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     function obtenerPrecioSugeridoVenta(perfumeObj, tipoVenta, tamanoDecant) {
       if (!perfumeObj) return 0;
+
+      const precioPersonalizado = perfumeObj[`precio_decant_${parseInt(tamanoDecant)}ml`];
+      if (tipoVenta === 'Decant' && precioPersonalizado !== null && precioPersonalizado !== undefined && precioPersonalizado !== '') {
+        return parseFloat(precioPersonalizado) || 0;
+      }
 
       if (tipoVenta === 'Perfume Sellado') {
         return parseFloat(perfumeObj.precio_sugerido || 0);
@@ -1248,7 +1296,12 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         tamano: tamanoValor,
         precio: costoUnitarioCalculado,
         precio_sugerido: precioSugeridoInput,
+        precio_decant_3ml: tipo === 'Perfume Sellado' ? (document.getElementById('stkPrecioDecant3').value === '' ? null : parseFloat(document.getElementById('stkPrecioDecant3').value)) : null,
+        precio_decant_5ml: tipo === 'Perfume Sellado' ? (document.getElementById('stkPrecioDecant5').value === '' ? null : parseFloat(document.getElementById('stkPrecioDecant5').value)) : null,
+        precio_decant_10ml: tipo === 'Perfume Sellado' ? (document.getElementById('stkPrecioDecant10').value === '' ? null : parseFloat(document.getElementById('stkPrecioDecant10').value)) : null,
+        precio_decant_30ml: tipo === 'Perfume Sellado' ? (document.getElementById('stkPrecioDecant30').value === '' ? null : parseFloat(document.getElementById('stkPrecioDecant30').value)) : null,
         stock: cantidadReg,
+        ubicacion_stock: ['Perfume Sellado', 'Perfume para Decant'].includes(tipo) ? document.getElementById('stkUbicacion').value : null,
         imagen_url: imagenInput || null,
         audio_url: null
       };
