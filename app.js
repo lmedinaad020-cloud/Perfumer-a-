@@ -255,7 +255,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
                 <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Alpha Móvil: <strong>${p.movil}</strong> ${p.movil === 1 ? 'frasco' : 'frascos'}</p>
                 <p style="margin:6px 0;font-size:.75rem;color:var(--muted)">Contenido restante: ${p.mlLocal.toFixed(1)} ml local · ${p.mlMovil.toFixed(1)} ml Alpha Móvil</p>
                 ${agotado ? '<p style="margin:6px 0;color:var(--danger);font-size:.78rem;font-weight:700">⚠️ Sin frascos abiertos disponibles. Abre uno sellado.</p>' : ''}
-                ${esAdmin() && !agotado ? `<button type="button" class="btn-sec" style="width:100%;margin-top:8px" onclick="moverPerfumeAbierto(${grupoIdx})">↔️ Cambiar ubicación</button>` : ''}
+                ${esAdmin() && !agotado ? `
+                  <button type="button" class="btn-sec" style="width:100%;margin-top:8px" onclick="moverPerfumeAbierto(${grupoIdx})">↔️ Cambiar ubicación</button>
+                  <button type="button" class="btn-del" style="width:100%;margin-top:6px" onclick="eliminarUnPerfumeAbierto(${grupoIdx})">🗑️ Eliminar 1 perfume abierto</button>
+                ` : ''}
               </div>
             </div>
           `;
@@ -410,6 +413,44 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       }
 
       alert(`Se movieron ${cantidad} frasco(s) de ${origen} a ${destino}.`);
+      cargarTodo();
+    }
+
+    async function eliminarUnPerfumeAbierto(grupoIdx) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
+      const grupo = gruposAbiertosInventario[grupoIdx];
+      if (!grupo) return alert('No se encontró el perfume abierto. Actualiza el inventario e inténtalo de nuevo.');
+
+      const origenElegido = prompt(`¿De dónde deseas eliminar 1 frasco abierto de "${grupo.nombre}"?\n\n1. Tienda Local (${grupo.local})\n2. Alpha Móvil (${grupo.movil})`, grupo.local > 0 ? '1' : '2');
+      if (origenElegido === null) return;
+      const origen = origenElegido.trim() === '1' ? 'Tienda Local' : origenElegido.trim() === '2' ? 'Alpha Móvil' : null;
+      if (!origen) return alert('Selecciona 1 para Tienda Local o 2 para Alpha Móvil.');
+
+      const filasOrigen = (origen === 'Tienda Local' ? grupo.filasLocal : grupo.filasMovil)
+        .filter(fila => Number(fila.stock) > 0);
+      const fila = filasOrigen[0];
+      if (!fila) return alert(`No hay perfumes abiertos disponibles en ${origen}.`);
+
+      const stockAnterior = Number(fila.stock);
+      const mlAnterior = Number(fila.ml_restantes ?? (stockAnterior * (parseInt(fila.tamano) || 100)));
+      const mlPorFrasco = mlAnterior / stockAnterior;
+      if (!confirm(`¿Eliminar 1 frasco abierto de "${grupo.nombre}" en ${origen}?\n\nSe retirarán aproximadamente ${mlPorFrasco.toFixed(1)} ml del inventario.`)) return;
+
+      let resultado;
+      if (stockAnterior === 1) {
+        resultado = await client.from('productos').delete().eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).select('id').maybeSingle();
+      } else {
+        let consulta = client.from('productos').update({
+          stock: stockAnterior - 1,
+          ml_restantes: Math.max(0, mlAnterior - mlPorFrasco)
+        }).eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior);
+        consulta = fila.ml_restantes == null ? consulta.is('ml_restantes', null) : consulta.eq('ml_restantes', fila.ml_restantes);
+        resultado = await consulta.select('id').maybeSingle();
+      }
+
+      if (resultado.error) return alert('No se pudo eliminar el perfume abierto: ' + resultado.error.message);
+      if (!resultado.data) return alert('El inventario cambió mientras procesabas la eliminación. Actualiza e inténtalo otra vez.');
+      alert(`Se eliminó 1 frasco abierto de "${grupo.nombre}" en ${origen}.`);
       cargarTodo();
     }
 
