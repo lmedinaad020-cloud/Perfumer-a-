@@ -48,7 +48,31 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
     }
 
-    async function comprobarMetaVentasDiaria() {
+    function reproducirAudioYEsperar(audio) {
+      return new Promise(resolve => {
+        let resuelto = false;
+        const terminar = () => {
+          if (resuelto) return;
+          resuelto = true;
+          audio.removeEventListener('ended', terminar);
+          audio.removeEventListener('error', terminar);
+          resolve();
+        };
+        audio.addEventListener('ended', terminar, { once: true });
+        audio.addEventListener('error', terminar, { once: true });
+        audio.currentTime = 0;
+        audio.play().catch(error => {
+          console.warn('El navegador bloqueó la reproducción del audio:', error);
+          terminar();
+        });
+        const esperaMaxima = Number.isFinite(audio.duration) && audio.duration > 0
+          ? audio.duration * 1000 + 1500
+          : 20000;
+        setTimeout(terminar, esperaMaxima);
+      });
+    }
+
+    async function comprobarMetaVentasDiaria(audioVentaFinalizado) {
       const hoy = fechaLocalClave();
       if (avisoMetaVentasFecha === hoy) return;
       const inicio = new Date();
@@ -65,8 +89,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       if (totalDia < META_DIARIA) return;
       avisoMetaVentasFecha = hoy;
       const mensaje = `¡Meta de ventas alcanzada! Hoy se vendieron S/ ${totalDia.toFixed(2)}.`;
-      sonidoMetaVentas.currentTime = 0;
-      sonidoMetaVentas.play().catch(errorAudio => console.warn('El navegador bloqueó el audio de la meta:', errorAudio));
+      if (audioVentaFinalizado) await audioVentaFinalizado;
+      reproducirAudioYEsperar(sonidoMetaVentas);
       mostrarAviso(mensaje, 'success');
       alert(mensaje);
     }
@@ -1384,7 +1408,14 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               console.warn("El navegador bloqueó la reproducción automática del audio:", err);
           });
 
-          await comprobarMetaVentasDiaria();
+          const audioVentaFinalizado = new Promise(resolve => {
+            if (sonidoVenta.paused || sonidoVenta.ended) return resolve();
+            const terminar = () => resolve();
+            sonidoVenta.addEventListener('ended', terminar, { once: true });
+            sonidoVenta.addEventListener('error', terminar, { once: true });
+            setTimeout(terminar, Number.isFinite(sonidoVenta.duration) ? sonidoVenta.duration * 1000 + 1500 : 20000);
+          });
+          await comprobarMetaVentasDiaria(audioVentaFinalizado);
           mostrarAviso('Venta registrada correctamente.', 'success');
           const agotadosEnVenta = reservaStock.filter(r => r.mlAnterior !== undefined && Number(r.mlReservado) === 0);
           if (agotadosEnVenta.length) {
