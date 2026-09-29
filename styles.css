@@ -79,6 +79,22 @@
     .product-card-stock-bar { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin: 6px 0 10px; }
     .product-card-stock-fill { height: 100%; border-radius: 2px; }
     .product-card-actions { display: flex; gap: 6px; flex-direction: column; margin-top: 6px; }
+    .sellado-stock-line { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:9px 10px; border:1px solid rgba(241,195,109,.2); border-radius:9px; background:linear-gradient(110deg,rgba(201,144,54,.1),rgba(2,19,38,.36)); }
+    .sellado-stock-line span { color:var(--muted); font-size:.77rem; }
+    .sellado-stock-line strong { color:var(--gold-light); font-size:.82rem; text-align:right; }
+    .sellado-precios { display:flex; flex-direction:column; gap:3px; margin:7px 0 10px; padding:10px; border-left:2px solid var(--gold); border-radius:0 8px 8px 0; background:rgba(201,144,54,.08); }
+    .sellado-precios strong { color:var(--gold-light); font-size:.82rem; }
+    .sellado-precios span { color:var(--muted); font-size:.68rem; }
+    .sellado-ubicacion-panel { display:flex; flex-direction:column; gap:7px; padding:11px; border:1px solid rgba(241,195,109,.2); border-radius:11px; background:linear-gradient(145deg,rgba(11,49,86,.82),rgba(2,19,38,.55)); }
+    .sellado-ubicacion-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; color:var(--gold-light); font-size:.77rem; }
+    .sellado-ubicacion-heading strong { color:var(--ivory); }
+    .sellado-ingreso-rapido { padding:8px; border-radius:8px; background:rgba(2,19,38,.42); }
+    .sellado-ingreso-rapido label { margin:0 0 5px; font-size:.7rem; }
+    .sellado-ingreso-rapido > div { display:grid; grid-template-columns:minmax(55px,.6fr) 1fr; gap:7px; }
+    .sellado-ingreso-rapido input { min-height:38px; padding:6px 8px; text-align:center; }
+    .sellado-ingreso-rapido button,.sellado-ubicacion-panel > button { width:100%; min-height:38px; margin:0; }
+    .sellado-ubicacion-panel .btn-sec { color:var(--ivory); }
+    .sellado-ubicacion-panel .btn-add,.sellado-ubicacion-panel .btn-open,.sellado-ubicacion-panel .btn-del { width:100%; }
 
     .search-box { position: relative; margin: 8px 0 10px; }
     .search-box input { padding-left: 36px; background: rgba(2,19,38,.8); border-color: var(--gold); }

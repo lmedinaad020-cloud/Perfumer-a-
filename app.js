@@ -263,6 +263,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             tamano: producto.tamano || '100ml',
             imagen_url: producto.imagen_url,
             precio_sugerido: producto.precio_sugerido,
+            precio_decant_3ml: producto.precio_decant_3ml,
+            precio_decant_5ml: producto.precio_decant_5ml,
+            precio_decant_10ml: producto.precio_decant_10ml,
+            precio_decant_30ml: producto.precio_decant_30ml,
             local: 0,
             movil: 0,
             mlLocal: 0,
@@ -311,8 +315,9 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               </div>
               <div class="product-card-body">
                 <h4 class="product-card-title">${p.nombre}</h4>
-                <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Tienda Local: <strong>${p.local}</strong> ${p.local === 1 ? 'frasco' : 'frascos'}</p>
-                <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Alpha Móvil: <strong>${p.movil}</strong> ${p.movil === 1 ? 'frasco' : 'frascos'}</p>
+                ${p.tipo === 'Perfume Sellado' ? `<div class="sellado-precios"><strong>Perfume: S/ ${Number(p.precio_sugerido || 0).toFixed(2)}</strong><span>Decants: 3 ml S/ ${Number(p.precio_decant_3ml || 0).toFixed(2)} · 5 ml S/ ${Number(p.precio_decant_5ml || 0).toFixed(2)}</span><span>10 ml S/ ${Number(p.precio_decant_10ml || 0).toFixed(2)} · 30 ml S/ ${Number(p.precio_decant_30ml || 0).toFixed(2)}</span></div>` : ''}
+                <p class="${p.tipo === 'Perfume Sellado' ? 'sellado-stock-line' : ''}" style="margin:6px 0;font-size:.84rem;color:var(--ivory)"><span>🏬 Tienda Local</span><strong>${p.local} ${p.local === 1 ? 'frasco' : 'frascos'}</strong></p>
+                <p class="${p.tipo === 'Perfume Sellado' ? 'sellado-stock-line' : ''}" style="margin:6px 0;font-size:.84rem;color:var(--ivory)"><span>🚐 Alpha Móvil</span><strong>${p.movil} ${p.movil === 1 ? 'frasco' : 'frascos'}</strong></p>
                 ${p.esGrupoAbierto ? `<p style="margin:6px 0;font-size:.75rem;color:var(--muted)">Contenido restante: ${p.mlLocal.toFixed(1)} ml local · ${p.mlMovil.toFixed(1)} ml Alpha Móvil</p>` : ''}
                 ${agotado ? `<p style="margin:6px 0;color:var(--danger);font-size:.78rem;font-weight:700">${p.esGrupoAbierto ? '⚠️ Sin frascos abiertos disponibles. Abre uno sellado.' : '⚠️ Sin stock sellado disponible.'}</p>` : ''}
                 ${esAdmin() && !agotado ? `
@@ -322,12 +327,17 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
                 ${esAdmin() && p.tipo === 'Perfume Sellado' ? `
                   <div class="product-card-actions" style="margin-top:10px">
                     ${(p.filasLocal.concat(p.filasMovil)).map(fila => `
-                      <div style="border-top:1px solid rgba(255,255,255,.12);padding-top:8px;margin-top:4px">
-                        <small style="color:var(--muted)">${fila.ubicacion_stock || 'Tienda Local'} · ${fila.stock} unid.</small>
-                        <button onclick="editarProducto(${fila.id})" class="btn-sec" style="padding:4px 8px;font-size:.75rem">✏️ Editar Producto</button>
-                        <button onclick="editarAudioProducto(${fila.id})" class="btn-sec" style="padding:4px 8px;font-size:.75rem">🎵 ${fila.audio_url ? 'Cambiar' : 'Agregar'} audio</button>
-                        ${fila.stock > 0 ? `<button onclick="abrirPerfumeSellado(${fila.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
-                        <button onclick="eliminarProducto(${fila.id}, '${fila.nombre.replace(/'/g, "\\'")}')" class="btn-del" style="margin-top:2px">🗑️ Eliminar Producto</button>
+                      <div class="sellado-ubicacion-panel">
+                        <div class="sellado-ubicacion-heading"><span>${fila.ubicacion_stock || 'Tienda Local'}</span><strong>${fila.stock} ${fila.stock === 1 ? 'frasco' : 'frascos'}</strong></div>
+                        <div class="sellado-ingreso-rapido">
+                          <label for="cantidadAgregarSellado-${fila.id}">Añadir unidades</label>
+                          <div><input type="number" id="cantidadAgregarSellado-${fila.id}" min="1" step="1" value="1" inputmode="numeric"><button type="button" class="btn-add" onclick="agregarCantidadPerfumeSellado(${fila.id})">＋ Añadir</button></div>
+                        </div>
+                        <button type="button" class="btn-sec" onclick="editarPreciosDecant(${fila.id})">💰 Editar precios de decants</button>
+                        <button type="button" class="btn-sec" onclick="editarProducto(${fila.id})">✏️ Editar producto</button>
+                        <button type="button" class="btn-sec" onclick="editarAudioProducto(${fila.id})">🎵 ${fila.audio_url ? 'Cambiar' : 'Agregar'} audio</button>
+                        ${fila.stock > 0 ? `<button type="button" class="btn-open" onclick="abrirPerfumeSellado(${fila.id})">🍾 Abrir para decant</button>` : ''}
+                        <button type="button" class="btn-del" onclick="eliminarProducto(${fila.id}, '${fila.nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar producto</button>
                       </div>
                     `).join('')}
                   </div>
@@ -653,6 +663,49 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
         cargarTodo();
       }
+    }
+
+    async function agregarCantidadPerfumeSellado(id) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
+      const producto = listaProductos.find(p => String(p.id) === String(id) && p.tipo === 'Perfume Sellado');
+      const campoCantidad = document.getElementById(`cantidadAgregarSellado-${id}`);
+      if (!producto || !campoCantidad) return alert('No se encontró el perfume. Actualiza el inventario e inténtalo de nuevo.');
+      const cantidad = Number(campoCantidad.value);
+      if (!Number.isInteger(cantidad) || cantidad < 1) return alert('Ingresa una cantidad entera mayor que cero.');
+      const stockActual = Number(producto.stock) || 0;
+      const nuevoStock = stockActual + cantidad;
+      const { data, error } = await client.from('productos').update({ stock: nuevoStock })
+        .eq('id', id).eq('stock', stockActual).select('id').maybeSingle();
+      if (error || !data) return alert('No se pudo añadir stock. Actualiza el inventario e inténtalo otra vez.' + (error?.message ? ` ${error.message}` : ''));
+      alert(`Se añadieron ${cantidad} ${cantidad === 1 ? 'frasco' : 'frascos'} de "${producto.nombre}" en ${producto.ubicacion_stock || 'Tienda Local'}. Nuevo stock: ${nuevoStock}.`);
+      cargarTodo();
+    }
+
+    async function editarPreciosDecant(id) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden editar precios.');
+      const producto = listaProductos.find(p => String(p.id) === String(id) && p.tipo === 'Perfume Sellado');
+      if (!producto) return alert('No se encontró el perfume. Actualiza el inventario e inténtalo de nuevo.');
+      const tamaños = ['3ml', '5ml', '10ml', '30ml'];
+      const precios = {};
+      for (const tamano of tamaños) {
+        const columna = `precio_decant_${tamano}`;
+        const actual = producto[columna] === null || producto[columna] === undefined ? '' : producto[columna];
+        const entrada = prompt(`Precio de decant ${tamano} para "${producto.nombre}" (S/):\nDeja vacío si no ofreces este tamaño.`, actual);
+        if (entrada === null) return;
+        if (entrada.trim() === '') {
+          precios[columna] = null;
+          continue;
+        }
+        const valor = Number(entrada);
+        if (!Number.isFinite(valor) || valor < 0) return alert(`Ingresa un precio válido para ${tamano}.`);
+        precios[columna] = valor;
+      }
+      const { error } = await client.from('productos').update(precios)
+        .eq('nombre', producto.nombre).eq('tamano', producto.tamano)
+        .in('tipo', ['Perfume Sellado', 'Perfume para Decant']);
+      if (error) return alert('No se pudieron actualizar los precios de decant: ' + error.message);
+      alert(`Precios de decant actualizados para "${producto.nombre}".`);
+      cargarTodo();
     }
 
     async function abrirPerfumeSellado(idSellado) {

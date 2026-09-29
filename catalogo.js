@@ -43,17 +43,23 @@
     return button;
   }
 
-  function getDecantPrices(name) {
-    const normalized = norm(name).toUpperCase();
-    if (normalized.includes('AL HARAMAIN') || normalized.includes('GOLD EDITION')) return [25, 45, 65, 195];
-    if (normalized.includes('VALENTINO INTENSE') || normalized.includes('VALENTINO INTENSE')) return [30, 45, 80, 240];
-    if (normalized.includes('LIQUID BRUN') || normalized.includes('LIQUID BRUM') || normalized.includes('NIGHT OUT')) return [20, 30, 40, 120];
-    return [15, 25, 35, 90];
+  function getDecantPrices(product) {
+    const normalized = norm(product.nombre).toUpperCase();
+    let fallback = [15, 25, 35, 90];
+    if (normalized.includes('AL HARAMAIN') || normalized.includes('GOLD EDITION')) fallback = [25, 45, 65, 195];
+    else if (normalized.includes('VALENTINO INTENSE')) fallback = [30, 45, 80, 240];
+    else if (normalized.includes('LIQUID BRUN') || normalized.includes('LIQUID BRUM') || normalized.includes('NIGHT OUT')) fallback = [20, 30, 40, 120];
+    return ['3ml', '5ml', '10ml', '30ml'].map((size, index) => {
+      const raw = product[`precio_decant_${size}`];
+      const saved = Number(raw);
+      return raw !== null && raw !== undefined && raw !== '' && Number.isFinite(saved) ? saved : fallback[index];
+    });
   }
 
   function deduplicateProducts(items) {
     const unique = new Map();
     const score = product => (product.tipo === 'Perfume para Decant' ? 4 : 0)
+      + (['precio_decant_3ml', 'precio_decant_5ml', 'precio_decant_10ml', 'precio_decant_30ml'].some(field => Number(product[field]) > 0) ? 3 : 0)
       + (Number(product.precio_venta) > 0 ? 2 : 0)
       + (product.audio_url ? 1 : 0);
     items.forEach(product => {
@@ -99,10 +105,10 @@
       name.append(nameButton);
       const price = document.createElement('p');
       price.className = 'product-price';
-      const values = getDecantPrices(product.nombre);
+      const values = getDecantPrices(product);
       const salePrice = Number(product.precio_venta || 0);
       price.textContent = salePrice > 0
-        ? `Precio de venta: S/ ${salePrice.toFixed(2)}`
+        ? `Perfume sellado: S/ ${salePrice.toFixed(2)}`
         : `Decants desde S/ ${values[0].toFixed(2)} (3 ml)`;
       if (product.agotado) {
         const badge = document.createElement('span');
@@ -133,7 +139,7 @@
   async function loadCatalog() {
     try {
       const { data, error } = await window.supabaseClient.from('catalogo_publico')
-        .select('id,nombre,tipo,tamano,precio_venta,imagen_url,audio_url,agotado')
+        .select('id,nombre,tipo,tamano,precio_venta,imagen_url,audio_url,agotado,precio_decant_3ml,precio_decant_5ml,precio_decant_10ml,precio_decant_30ml')
         .order('nombre', { ascending: true });
       if (error) throw error;
       products = deduplicateProducts(data || []);

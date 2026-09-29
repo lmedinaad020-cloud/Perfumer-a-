@@ -1,8 +1,12 @@
--- Configuración para asociar audios y ofrecer el catálogo público.
+﻿-- Configuración para asociar audios y ofrecer el catálogo público.
 -- Ejecutar una sola vez en Supabase > SQL Editor.
 
 alter table public.productos
-  add column if not exists audio_url text;
+  add column if not exists audio_url text,
+  add column if not exists precio_decant_3ml numeric(10, 2),
+  add column if not exists precio_decant_5ml numeric(10, 2),
+  add column if not exists precio_decant_10ml numeric(10, 2),
+  add column if not exists precio_decant_30ml numeric(10, 2);
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
@@ -39,9 +43,15 @@ select
   precio_sugerido as precio_venta,
   imagen_url,
   audio_url,
-  (tipo = 'Perfume Sellado' and stock <= 0) as agotado
+  (tipo = 'Perfume Sellado' and stock <= 0) as agotado,
+  precio_decant_3ml,
+  precio_decant_5ml,
+  precio_decant_10ml,
+  precio_decant_30ml
 from public.productos
 where (tipo = 'Perfume para Decant' and stock > 0)
-   or (tipo = 'Perfume Sellado' and stock <= 0);
+   or (tipo = 'Perfume Sellado' and stock > 0);
 
 grant select on public.catalogo_publico to anon, authenticated;
+
+
