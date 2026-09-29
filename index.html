@@ -96,6 +96,13 @@
                 <option value="30ml">30ml</option>
               </select>
             </div>
+            <div id="grpUbicacionDecant" class="form-group hidden">
+              <label>Ubicación del frasco abierto</label>
+              <select id="itemUbicacionDecant" onchange="actualizarOpcionesVenta()">
+                <option value="Tienda Local">Tienda Local</option>
+                <option value="Alpha Móvil">Alpha Móvil</option>
+              </select>
+            </div>
             <div class="form-group">
               <label>Cantidad</label>
               <input type="number" id="itemCantidad" value="1" min="1">
@@ -283,6 +290,8 @@
           <div><label for="fechaReporteHasta">Hasta</label><input type="date" id="fechaReporteHasta" onchange="cargarHistorial()"></div>
           <button type="button" class="btn-sec" onclick="limpiarFiltroFechas()">Limpiar fechas</button>
         </div>
+
+        <div id="resumenMasVendidos" class="chart-container" aria-live="polite"></div>
 
         <!-- GRÁFICO 1: DIARIO DE VENTAS -->
         <div class="chart-container">

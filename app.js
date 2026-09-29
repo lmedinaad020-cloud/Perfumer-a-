@@ -20,6 +20,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     let usuarioActual = null;
     let listaProductos = [];
+    let gruposAbiertosInventario = [];
     let carritoVenta = [];
     let comprobanteBase64 = null;
     let listaVentasCache = [];
@@ -187,6 +188,42 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       else if (categoriaFiltroActual === 'BAJO') filtrados = filtrados.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 4);
       else if (categoriaFiltroActual === 'AGOTADO') filtrados = filtrados.filter(p => Number(p.stock) <= 0);
 
+      const gruposAbiertos = new Map();
+      filtrados = filtrados.reduce((resultado, producto) => {
+        if (producto.tipo !== 'Perfume para Decant') {
+          resultado.push(producto);
+          return resultado;
+        }
+        const clave = `${normalizarTexto(producto.nombre).trim()}|${normalizarTexto(producto.tamano || '')}`;
+        let grupo = gruposAbiertos.get(clave);
+        if (!grupo) {
+          grupo = {
+            esGrupoAbierto: true,
+            nombre: producto.nombre,
+            tamano: producto.tamano || '100ml',
+            imagen_url: producto.imagen_url,
+            precio_sugerido: producto.precio_sugerido,
+            local: 0,
+            movil: 0,
+            mlLocal: 0,
+            mlMovil: 0,
+            filasLocal: [],
+            filasMovil: [],
+            stock: 0
+          };
+          gruposAbiertos.set(clave, grupo);
+          resultado.push(grupo);
+        }
+        const ubicacion = producto.ubicacion_stock === 'Alpha Móvil' ? 'movil' : 'local';
+        const cantidadBotellas = Math.max(0, Number(producto.stock) || 0);
+        const ml = Number(producto.ml_restantes ?? (cantidadBotellas * (parseInt(producto.tamano) || 100)));
+        grupo[ubicacion] += cantidadBotellas;
+        grupo[ubicacion === 'local' ? 'mlLocal' : 'mlMovil'] += Math.max(0, ml);
+        grupo[ubicacion === 'local' ? 'filasLocal' : 'filasMovil'].push(producto);
+        grupo.stock += cantidadBotellas;
+        return resultado;
+      }, []);
+
       const modoOrden = document.getElementById('ordenInventario').value;
       filtrados.sort((a, b) => {
         if (modoOrden === 'stock_asc') return Number(a.stock) - Number(b.stock);
@@ -201,7 +238,28 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         return;
       }
 
+      gruposAbiertosInventario = [];
       contGrid.innerHTML = filtrados.map(p => {
+        if (p.esGrupoAbierto) {
+          const grupoIdx = gruposAbiertosInventario.push(p) - 1;
+          const agotado = p.stock <= 0;
+          return `
+            <div class="product-card">
+              <div class="product-card-img-wrapper">
+                <img src="${p.imagen_url || IMG_DEFAULT}" class="product-card-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
+                <span class="badge product-card-badge">ABIERTO (${p.tamano})</span>
+              </div>
+              <div class="product-card-body">
+                <h4 class="product-card-title">${p.nombre}</h4>
+                <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Tienda Local: <strong>${p.local}</strong> ${p.local === 1 ? 'frasco' : 'frascos'}</p>
+                <p style="margin:6px 0;font-size:.84rem;color:var(--ivory)">Alpha Móvil: <strong>${p.movil}</strong> ${p.movil === 1 ? 'frasco' : 'frascos'}</p>
+                <p style="margin:6px 0;font-size:.75rem;color:var(--muted)">Contenido restante: ${p.mlLocal.toFixed(1)} ml local · ${p.mlMovil.toFixed(1)} ml Alpha Móvil</p>
+                ${agotado ? '<p style="margin:6px 0;color:var(--danger);font-size:.78rem;font-weight:700">⚠️ Sin frascos abiertos disponibles. Abre uno sellado.</p>' : ''}
+                ${esAdmin() && !agotado ? `<button type="button" class="btn-sec" style="width:100%;margin-top:8px" onclick="moverPerfumeAbierto(${grupoIdx})">↔️ Cambiar ubicación</button>` : ''}
+              </div>
+            </div>
+          `;
+        }
         let badgeClass = 'badge-ok';
         let badgeText = `Stock: ${p.stock}`;
         let barColor = 'var(--success)';
@@ -251,6 +309,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
                   <span class="badge ${badgeClass}">${badgeText}</span>
                   <span style="font-size:0.75rem; color:var(--muted);">${p.stock} unids.</span>
                 </div>
+                ${p.tipo === 'Perfume para Decant' && Number(p.ml_restantes ?? (p.stock * mlBase)) <= 0 ? `<p style="color:var(--danger);font-size:.78rem;font-weight:700">⚠️ Frasco agotado: abrir uno sellado (${p.ubicacion_stock || 'Tienda Local'}).</p>` : ''}
+                ${p.tipo === 'Perfume para Decant' ? `<p style="font-size:.75rem;color:var(--muted);margin:4px 0">Contenido: ${Number(p.ml_restantes ?? (p.stock * mlBase)).toFixed(1)} ml · ${p.ubicacion_stock || 'Tienda Local'}</p>` : ''}
                 <div class="product-card-stock-bar">
                   <div class="product-card-stock-fill" style="width: ${pct}%; background: ${barColor};"></div>
                 </div>
@@ -270,6 +330,87 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           </div>
         `;
       }).join('');
+    }
+
+    async function moverPerfumeAbierto(grupoIdx) {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden cambiar la ubicación del inventario.');
+      const grupo = gruposAbiertosInventario[grupoIdx];
+      if (!grupo) return alert('No se encontró el perfume abierto. Actualiza el inventario e inténtalo de nuevo.');
+
+      const origenElegido = prompt(`¿Desde dónde moverás frascos de "${grupo.nombre}"?\n\n1. Tienda Local (${grupo.local})\n2. Alpha Móvil (${grupo.movil})`, grupo.local > 0 ? '1' : '2');
+      if (origenElegido === null) return;
+      const origen = origenElegido.trim() === '1' ? 'Tienda Local' : origenElegido.trim() === '2' ? 'Alpha Móvil' : null;
+      if (!origen) return alert('Selecciona 1 para Tienda Local o 2 para Alpha Móvil.');
+
+      const destino = origen === 'Tienda Local' ? 'Alpha Móvil' : 'Tienda Local';
+      const filasOrigen = origen === 'Tienda Local' ? grupo.filasLocal : grupo.filasMovil;
+      const disponibles = filasOrigen.reduce((total, fila) => total + Math.max(0, Number(fila.stock) || 0), 0);
+      if (!disponibles) return alert(`No hay frascos abiertos disponibles en ${origen}.`);
+
+      const cantidadTexto = prompt(`¿Cuántos frascos mover de ${origen} a ${destino}?\nDisponibles: ${disponibles}`, '1');
+      if (cantidadTexto === null) return;
+      const cantidad = Number(cantidadTexto);
+      if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > disponibles) return alert(`Ingresa una cantidad entre 1 y ${disponibles}.`);
+      if (!confirm(`¿Confirmas mover ${cantidad} frasco(s) de "${grupo.nombre}" de ${origen} a ${destino}?`)) return;
+
+      let pendientes = cantidad;
+      const cambios = [];
+      try {
+        for (const fila of filasOrigen) {
+          if (pendientes <= 0) break;
+          const stockAnterior = Math.max(0, Number(fila.stock) || 0);
+          if (!stockAnterior) continue;
+          const mover = Math.min(stockAnterior, pendientes);
+
+          if (mover === stockAnterior) {
+            const { data, error } = await client.from('productos').update({ ubicacion_stock: destino })
+              .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).select('id').maybeSingle();
+            if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
+            cambios.push({ tipo: 'mover', id: fila.id, origen, destino, stock: stockAnterior });
+          } else {
+            const mlAnterior = Number(fila.ml_restantes ?? (stockAnterior * (parseInt(fila.tamano) || 100)));
+            const mlTrasladados = mlAnterior * mover / stockAnterior;
+            const stockRestante = stockAnterior - mover;
+            const mlRestantes = Math.max(0, mlAnterior - mlTrasladados);
+            const { data, error } = await client.from('productos').update({ stock: stockRestante, ml_restantes: mlRestantes })
+              .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).eq('ml_restantes', fila.ml_restantes).select('id').maybeSingle();
+            if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
+
+            const { data: nuevaFila, error: errorInsert } = await client.from('productos').insert([{
+              nombre: fila.nombre,
+              tipo: fila.tipo,
+              tamano: fila.tamano,
+              precio: fila.precio,
+              precio_sugerido: fila.precio_sugerido,
+              stock: mover,
+              ubicacion_stock: destino,
+              ml_restantes: mlTrasladados,
+              imagen_url: fila.imagen_url,
+              audio_url: fila.audio_url || null
+            }]).select('id').single();
+            if (errorInsert || !nuevaFila) {
+              await client.from('productos').update({ stock: stockAnterior, ml_restantes: fila.ml_restantes }).eq('id', fila.id).eq('stock', stockRestante);
+              throw new Error(errorInsert?.message || 'No se pudo crear el registro en la ubicación de destino.');
+            }
+            cambios.push({ tipo: 'dividir', id: fila.id, nuevoId: nuevaFila.id, origen, destino, stockAnterior, mlAnterior: fila.ml_restantes, stockRestante });
+          }
+          pendientes -= mover;
+        }
+        if (pendientes) throw new Error('No se pudieron trasladar todos los frascos solicitados.');
+      } catch (error) {
+        for (const cambio of cambios.reverse()) {
+          if (cambio.tipo === 'mover') {
+            await client.from('productos').update({ ubicacion_stock: cambio.origen }).eq('id', cambio.id).eq('ubicacion_stock', cambio.destino);
+          } else {
+            await client.from('productos').delete().eq('id', cambio.nuevoId);
+            await client.from('productos').update({ stock: cambio.stockAnterior, ml_restantes: cambio.mlAnterior }).eq('id', cambio.id).eq('stock', cambio.stockRestante);
+          }
+        }
+        return alert('No se completó el cambio de ubicación: ' + error.message);
+      }
+
+      alert(`Se movieron ${cantidad} frasco(s) de ${origen} a ${destino}.`);
+      cargarTodo();
     }
 
     async function sumarStockOLote(id) {
@@ -338,28 +479,31 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const perfumeSelladoObj = listaProductos.find(p => p.id === idSellado);
       if (!perfumeSelladoObj || perfumeSelladoObj.stock < 1) return alert('No hay stock disponible para abrir.');
 
-      const confirmar = confirm(`¿Deseas ABRIR 1 frasco sellado de "${perfumeSelladoObj.nombre}" (${perfumeSelladoObj.tamano || '100ml'})?\n\n- Se descontará 1 unidad de Perfumes Sellados.\n- Se sumará 1 unidad a "Perfume para Decant".`);
-      if (!confirmar) return;
+      const ubicacionElegida = prompt(`¿Dónde estará el frasco abierto de "${perfumeSelladoObj.nombre}"?\n\n1. Tienda Local\n2. Alpha Móvil`, '1');
+      if (ubicacionElegida === null) return;
+      const ubicacion = ubicacionElegida.trim() === '1' ? 'Tienda Local' : ubicacionElegida.trim() === '2' ? 'Alpha Móvil' : null;
+      if (!ubicacion) return alert('Selecciona 1 para Tienda Local o 2 para Alpha Móvil.');
 
       const nuevoStockSellado = perfumeSelladoObj.stock - 1;
       const { error: err1 } = await client.from('productos').update({ stock: nuevoStockSellado }).eq('id', idSellado);
       if (err1) return alert('Error al actualizar stock sellado: ' + err1.message);
 
-      const perfumeAbiertoObj = listaProductos.find(p => p.tipo === 'Perfume para Decant' && p.nombre.toLowerCase() === perfumeSelladoObj.nombre.toLowerCase());
-
-      if (perfumeAbiertoObj) {
-        await client.from('productos').update({ stock: perfumeAbiertoObj.stock + 1 }).eq('id', perfumeAbiertoObj.id);
-      } else {
-        await client.from('productos').insert([{
+      const mlInicial = parseInt(perfumeSelladoObj.tamano) || 100;
+      const { error: errOpen } = await client.from('productos').insert([{
           nombre: perfumeSelladoObj.nombre,
           tipo: 'Perfume para Decant',
           tamano: perfumeSelladoObj.tamano || '100ml',
           precio: perfumeSelladoObj.precio,
           precio_sugerido: perfumeSelladoObj.precio_sugerido,
           stock: 1,
+          ubicacion_stock: ubicacion,
+          ml_restantes: mlInicial,
           imagen_url: perfumeSelladoObj.imagen_url,
           audio_url: perfumeSelladoObj.audio_url || null
         }]);
+      if (errOpen) {
+        await client.from('productos').update({ stock: perfumeSelladoObj.stock }).eq('id', idSellado).eq('stock', nuevoStockSellado);
+        return alert('No se pudo registrar el frasco abierto: ' + errOpen.message + '. Ejecuta primero la migración SQL indicada.');
       }
 
       alert(`¡"${perfumeSelladoObj.nombre}" se abrió correctamente! Quedan ${nuevoStockSellado} sellados.`);
@@ -485,13 +629,17 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const isDecant = itemTipoVal === 'Decant';
       
       document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
+      document.getElementById('grpUbicacionDecant').classList.toggle('hidden', !isDecant);
+      const canalActual = document.getElementById('vtaCanal').value;
+      if (isDecant && ['Tienda Local', 'Alpha Móvil'].includes(canalActual)) document.getElementById('itemUbicacionDecant').value = canalActual;
       
       const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
-      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query));
+      const ubicacion = document.getElementById('itemUbicacionDecant').value;
+      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query) && (!isDecant || (p.ubicacion_stock || 'Tienda Local') === ubicacion));
       
       const selectPerfume = document.getElementById('itemPerfume');
       if (filtrados.length === 0) {
-        selectPerfume.innerHTML = `<option value="">-- Sin resultados disponibles --</option>`;
+        selectPerfume.innerHTML = `<option value="">${isDecant ? 'Sin perfumes abiertos con stock en ' + ubicacion : '-- Sin resultados disponibles --'}</option>`;
       } else {
         selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} [${p.tamano || '100ml'}] (Stock: ${p.stock})</option>`).join('');
       }
@@ -564,7 +712,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         const precioAuto = obtenerPrecioSugeridoVenta(perfume, tipoVenta, tamanoDecant);
 
         document.getElementById('prevNombre').innerText = `${perfume.nombre} (${tipoVenta === 'Decant' ? tamanoDecant : (perfume.tamano || '100ml')})`;
-        document.getElementById('prevStock').innerText = `Stock disponible: ${perfume.stock} unidades | PVP Sugerido: S/ ${precioAuto.toFixed(2)}`;
+        const stockLabel = tipoVenta === 'Decant' ? `${Number(perfume.ml_restantes ?? (perfume.stock * (parseInt(perfume.tamano) || 100))).toFixed(1)} ml restantes · ${perfume.ubicacion_stock || 'Tienda Local'}` : `${perfume.stock} unidades`;
+        document.getElementById('prevStock').innerText = `Stock disponible: ${stockLabel} | PVP Sugerido: S/ ${precioAuto.toFixed(2)}`;
         document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
         cardPreview.classList.remove('hidden');
 
@@ -740,6 +889,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       if (!perfumeObj) return alert('Producto no encontrado en inventario.');
 
       if (tipoVenta === 'Decant') {
+        const mlRestantes = Number(perfumeObj.ml_restantes ?? (perfumeObj.stock * (parseInt(perfumeObj.tamano) || 100)));
+        const mlNecesarios = (parseInt(tamanoDecant) || 3) * cantidad;
+        const enCarritoMismoFrasco = carritoVenta.filter(i => i.tipo === 'Decant' && String(i.producto_id) === String(perfumeObj.id)).reduce((s, i) => s + (parseInt(i.tamano) || 3) * Number(i.cantidad || 0), 0);
+        if (mlRestantes < mlNecesarios + enCarritoMismoFrasco) return alert(`Este frasco de ${perfumeObj.nombre} tiene ${Math.max(0, mlRestantes - enCarritoMismoFrasco)} ml disponibles en ${perfumeObj.ubicacion_stock || 'Tienda Local'}.`);
         const envase = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoDecant);
         const cantidadEnCarrito = carritoVenta.reduce((total, item) =>
           item.tipo === 'Decant' && item.tamano === tamanoDecant ? total + Number(item.cantidad || 0) : total, 0);
@@ -786,6 +939,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         imagen_url: perfumeObj.imagen_url,
         es_regalo: false
       };
+      if (tipoVenta === 'Decant') item.ubicacion_stock = perfumeObj.ubicacion_stock || 'Tienda Local';
 
       carritoVenta.push(item);
       guardarBorradorVenta();
@@ -803,7 +957,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     }
 
     function ofrecerRegaloDecant3ml() {
-      const perfumesAbiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0);
+      const ubicacionRegalo = document.getElementById('itemUbicacionDecant').value;
+      const perfumesAbiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0 && (p.ubicacion_stock || 'Tienda Local') === ubicacionRegalo);
       if (!perfumesAbiertos.length) {
         alert('⚠️ No hay perfumes abiertos disponibles para preparar el decant de regalo.');
         return;
@@ -816,7 +971,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     function filtrarRegalosModal() {
       const query = document.getElementById('regaloBuscador').value.toLowerCase().trim();
-      perfumesRegaloFiltrados = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0 && p.nombre.toLowerCase().includes(query));
+      const ubicacionRegalo = document.getElementById('itemUbicacionDecant').value;
+      perfumesRegaloFiltrados = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0 && (p.ubicacion_stock || 'Tienda Local') === ubicacionRegalo && p.nombre.toLowerCase().includes(query));
 
       const selectRegalo = document.getElementById('selectRegaloModal');
       if (!perfumesRegaloFiltrados.length) {
@@ -890,6 +1046,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       };
 
       carritoVenta.push(regaloItem);
+      regaloItem.ubicacion_stock = perfumeRegalo.ubicacion_stock || 'Tienda Local';
       guardarBorradorVenta();
       cerrarModalRegalo();
       renderizarCarrito();
@@ -1031,6 +1188,11 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     async function restaurarReservaStock(reservas) {
       for (const reserva of [...reservas].reverse()) {
+        if (reserva.mlAnterior !== undefined) {
+          const { error } = await client.from('productos').update({ ml_restantes: reserva.mlAnterior, stock: reserva.stockAnterior }).eq('id', reserva.id).eq('ml_restantes', reserva.mlReservado);
+          if (error) console.error('No se pudo devolver el líquido reservado.', reserva.id, error);
+          continue;
+        }
         const { data, error } = await client.from('productos')
           .update({ stock: reserva.stockAnterior })
           .eq('id', reserva.id)
@@ -1043,6 +1205,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     async function reservarStockVenta(items) {
       const cantidades = new Map();
+      const consumosMl = new Map();
       items.forEach(item => {
         let productoId = null;
         if (item.tipo === 'Perfume Sellado') productoId = item.producto_id;
@@ -1051,9 +1214,26 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           if (envase) productoId = envase.id;
         }
         if (productoId !== null) cantidades.set(productoId, (cantidades.get(productoId) || 0) + Number(item.cantidad || 0));
+        if (item.tipo === 'Decant') consumosMl.set(item.producto_id, (consumosMl.get(item.producto_id) || 0) + (parseInt(item.tamano) || 3) * Number(item.cantidad || 0));
       });
       const reservas = [];
       try {
+        for (const [id, ml] of [...consumosMl.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])))) {
+          const { data: perfume, error } = await client.from('productos').select('ml_restantes,stock,tamano').eq('id', id).single();
+          if (error || !perfume) throw new Error('No se pudo verificar el líquido del perfume abierto.');
+          const mlAnterior = Number(perfume.ml_restantes ?? (Number(perfume.stock) * (parseInt(perfume.tamano) || 100)));
+          if (mlAnterior < ml) throw new Error(`Quedan ${mlAnterior} ml en uno de los frascos abiertos; se necesitan ${ml} ml.`);
+          const mlReservado = Math.max(0, mlAnterior - ml);
+          const { data: actualizado, error: errUpdate } = await client.from('productos').update({ ml_restantes: mlReservado, stock: mlReservado > 0 ? 1 : 0 })
+            .eq('id', id).eq('ml_restantes', perfume.ml_restantes).select('id').maybeSingle();
+          if (errUpdate) throw new Error('No se pudo descontar el líquido: ' + errUpdate.message);
+          // El valor NULL identifica frascos antiguos previos a la migración; reintentar una vez con su valor inicial inferido.
+          if (!actualizado && perfume.ml_restantes == null) {
+            const { data: actualizadoLegacy, error: errLegacy } = await client.from('productos').update({ ml_restantes: mlReservado, stock: mlReservado > 0 ? 1 : 0 }).eq('id', id).is('ml_restantes', null).select('id').maybeSingle();
+            if (errLegacy || !actualizadoLegacy) throw new Error('El inventario del perfume cambió durante la venta; vuelve a intentarlo.');
+          } else if (!actualizado) throw new Error('El inventario del perfume cambió durante la venta; vuelve a intentarlo.');
+          reservas.push({ id, mlAnterior, mlReservado, stockAnterior: Number(perfume.stock) });
+        }
         for (const [id, cantidad] of [...cantidades.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])))) {
           const { data: producto, error: errorLectura } = await client.from('productos').select('stock').eq('id', id).single();
           if (errorLectura || !producto) throw new Error('No se pudo verificar el stock del producto ' + id + '.');
@@ -1132,6 +1312,11 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           });
 
           mostrarAviso('Venta registrada correctamente.', 'success');
+          const agotadosEnVenta = reservaStock.filter(r => r.mlAnterior !== undefined && Number(r.mlReservado) === 0);
+          if (agotadosEnVenta.length) {
+            const agotados = agotadosEnVenta.map(r => listaProductos.find(p => String(p.id) === String(r.id))?.nombre || 'Perfume').join(', ');
+            alert(`⚠️ Se agotó el perfume abierto: ${agotados}. Abre un frasco sellado para reponerlo.`);
+          }
           carritoVenta = [];
           comprobanteBase64 = null;
           document.getElementById('vtaNotas').value = '';
@@ -1156,7 +1341,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     ['vtaNotas', 'vtaCanal', 'vtaMetodoPago'].forEach(id => {
       const campo = document.getElementById(id);
       campo.addEventListener('input', guardarBorradorVenta);
-      campo.addEventListener('change', guardarBorradorVenta);
+      campo.addEventListener('change', () => {
+        if (id === 'vtaCanal') filtrarPerfumesVenta();
+        guardarBorradorVenta();
+      });
     });
 
     async function cargarHistorial() {
@@ -1175,6 +1363,22 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         const clave = fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
         return (!fechaDesde || clave >= fechaDesde) && (!fechaHasta || clave <= fechaHasta);
       });
+
+      const resumenMasVendidos = document.getElementById('resumenMasVendidos');
+      const conteoProductos = new Map();
+      ventas.forEach(v => (Array.isArray(v.detalles) ? v.detalles : []).forEach(item => {
+        if (item.es_regalo) return;
+        const etiquetaTipo = item.tipo === 'Decant' ? `Decant ${item.tamano}` : item.tipo === 'Perfume Sellado' ? 'Perfume entero' : null;
+        if (!etiquetaTipo) return;
+        const llave = `${item.nombre}|||${etiquetaTipo}`;
+        const actual = conteoProductos.get(llave) || { nombre: item.nombre, tipo: etiquetaTipo, unidades: 0 };
+        actual.unidades += Number(item.cantidad || 1);
+        conteoProductos.set(llave, actual);
+      }));
+      if (resumenMasVendidos) {
+        const mejores = [...conteoProductos.values()].sort((a, b) => b.unidades - a.unidades).slice(0, 10);
+        resumenMasVendidos.innerHTML = `<h4 style="margin:0 0 8px;color:var(--gold-light)">🏆 Más vendidos en el período</h4>${mejores.length ? mejores.map((p, i) => `<p style="margin:5px 0">${i + 1}. ${p.nombre} · ${p.tipo}: <strong>${p.unidades} vendidos</strong></p>`).join('') : '<p class="empty-msg">Aún no hay detalle de productos para este período.</p>'}`;
+      }
       
       const contenedor = document.getElementById('listaVentas');
       
@@ -1336,15 +1540,22 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       if (Array.isArray(ventaObj.detalles)) {
         for (const item of ventaObj.detalles) {
-          if (item.tipo === 'Perfume Sellado') {
+          if (item.tipo === 'Decant') {
+            const { data: perfume } = await client.from('productos').select('ml_restantes,stock,tamano').eq('id', item.producto_id).maybeSingle();
+            if (perfume) {
+              const mlActual = Number(perfume.ml_restantes ?? (Number(perfume.stock) * (parseInt(perfume.tamano) || 100)));
+              const mlDevueltos = mlActual + (parseInt(item.tamano) || 3) * Number(item.cantidad || 1);
+              await client.from('productos').update({ ml_restantes: mlDevueltos, stock: mlDevueltos > 0 ? 1 : 0 }).eq('id', item.producto_id);
+            }
+            const envase = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
+            if (envase) {
+              const { data: envaseActual } = await client.from('productos').select('stock').eq('id', envase.id).maybeSingle();
+              if (envaseActual) await client.from('productos').update({ stock: Number(envaseActual.stock) + Number(item.cantidad || 1) }).eq('id', envase.id);
+            }
+          } else if (item.tipo === 'Perfume Sellado') {
             const perf = listaProductos.find(p => p.id === item.producto_id);
             if (perf) {
               await client.from('productos').update({ stock: perf.stock + item.cantidad }).eq('id', perf.id);
-            }
-          } else {
-            const vacioObj = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === item.tamano);
-            if (vacioObj) {
-              await client.from('productos').update({ stock: vacioObj.stock + item.cantidad }).eq('id', vacioObj.id);
             }
           }
         }
@@ -1354,7 +1565,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       if (error) {
         alert('Error al deshacer la venta: ' + error.message);
       } else {
-        alert('¡Venta anulada correctamente! El stock fue devuelto al inventario.');
+        alert('¡Venta anulada correctamente! Se devolvieron los mililitros y el stock de envases/productos.');
         cargarTodo();
       }
     }
