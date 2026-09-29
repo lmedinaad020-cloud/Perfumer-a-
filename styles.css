@@ -107,6 +107,30 @@
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
     .modal-content { background: var(--surface); border: 1px solid var(--gold); border-radius: 12px; padding: 18px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .modal-content img { max-width: 100%; max-height: 70vh; border-radius: 8px; border: 1px solid var(--border); object-fit: contain; }
+    .traslado-modal { position: relative; max-width: 460px; text-align: left; padding: 28px; background: radial-gradient(circle at 50% 0, rgba(201,144,54,.14), transparent 42%), linear-gradient(145deg, #0d3a63, #06213e); }
+    .traslado-cerrar { position: absolute; top: 10px; right: 12px; width: 38px; min-height: 38px; margin: 0; padding: 0; background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 1.5rem; }
+    .traslado-icono { display: grid; place-items: center; width: 52px; height: 52px; margin: 0 auto 8px; border-radius: 16px; background: rgba(201,144,54,.15); border: 1px solid var(--border); font-size: 1.55rem; }
+    .traslado-etiqueta { margin: 0; text-align: center; color: var(--gold-light); font-size: .68rem; letter-spacing: .14em; font-weight: 700; }
+    .traslado-modal h3 { margin: 3px 0; text-align: center; }
+    .traslado-nombre { margin: 0; text-align: center; color: var(--ivory); font-weight: 700; }
+    .traslado-ayuda { margin: 8px 0 16px; text-align: center; font-size: .82rem; }
+    .traslado-ubicaciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .traslado-opcion { position: relative; display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 2px 8px; min-height: 100px; padding: 12px; margin: 0; border: 1px solid rgba(246,240,231,.2); border-radius: 12px; background: rgba(2,19,38,.38); cursor: pointer; transition: border-color .18s, background .18s, transform .18s; }
+    .traslado-opcion:has(input:checked) { border-color: var(--gold-light); background: rgba(201,144,54,.14); box-shadow: 0 0 0 2px rgba(241,195,109,.1); }
+    .traslado-opcion input { position: absolute; top: 10px; right: 10px; width: 17px; min-height: 17px; accent-color: var(--gold); }
+    .traslado-opcion-icono { grid-row: span 2; font-size: 1.35rem; }
+    .traslado-opcion-texto { padding-right: 18px; color: var(--ivory); font-size: .83rem; font-weight: 700; }
+    .traslado-opcion strong { grid-column: 2; color: var(--gold-light); font-size: 1.4rem; line-height: 1.1; }
+    .traslado-opcion small { grid-column: 2; color: var(--muted); font-size: .7rem; }
+    .traslado-resumen { display: flex; justify-content: space-between; gap: 10px; margin: 12px 0; padding: 10px 12px; border-radius: 9px; background: rgba(133,184,143,.1); border: 1px solid rgba(133,184,143,.25); font-size: .82rem; }
+    .traslado-resumen span { color: var(--muted); }
+    .traslado-resumen strong { color: var(--success); text-align: right; }
+    .traslado-cantidad { margin-bottom: 10px; }
+    .traslado-cantidad input { text-align: center; font-weight: 700; font-size: 1.15rem; }
+    .traslado-cantidad small { display: block; margin-top: 5px; color: var(--muted); font-size: .72rem; }
+    .traslado-acciones { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+    .traslado-acciones button { margin: 0; }
+    .traslado-acciones .btn-sec { color: var(--ivory); }
 
     .nota-box { background: rgba(201,144,54,0.12); border-left: 3px solid var(--gold); padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; margin: 6px 0; color: #f6f0e7; }
     .stock-item { background: rgba(2,19,38,.5); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
@@ -145,6 +169,9 @@
       .inv-grid { grid-template-columns: 1fr 1fr; }
       .cart-box { padding: 14px; }
       .modal-content { padding: 16px; }
+      .traslado-modal { padding: 24px 17px 17px; }
+      .traslado-ubicaciones { gap: 7px; }
+      .traslado-opcion { padding: 9px; grid-template-columns: 23px 1fr; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

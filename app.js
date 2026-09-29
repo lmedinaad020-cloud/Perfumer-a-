@@ -408,27 +408,70 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       }).join('');
     }
 
-    async function moverPerfumeAbierto(grupoIdx) {
+    let grupoTrasladoActual = null;
+
+    function moverPerfumeAbierto(grupoIdx) {
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden cambiar la ubicación del inventario.');
       const grupo = gruposAbiertosInventario[grupoIdx];
       if (!grupo) return alert('No se encontró el perfume abierto. Actualiza el inventario e inténtalo de nuevo.');
+      grupoTrasladoActual = grupoIdx;
+      document.getElementById('trasladoTitulo').innerText = grupo.esGrupoAbierto ? 'Mover perfume abierto' : 'Mover perfume sellado';
+      document.getElementById('trasladoNombre').innerText = `${grupo.nombre} · ${grupo.tamano}`;
+      document.getElementById('trasladoStockLocal').innerText = grupo.local;
+      document.getElementById('trasladoStockMovil').innerText = grupo.movil;
+      document.getElementById('trasladoOrigenLocal').checked = grupo.local > 0;
+      document.getElementById('trasladoOrigenMovil').checked = grupo.local <= 0 && grupo.movil > 0;
+      document.getElementById('trasladoCantidad').value = 1;
+      const botonTraslado = document.getElementById('btnConfirmarTraslado');
+      botonTraslado.disabled = false;
+      botonTraslado.innerText = 'Confirmar traslado';
+      document.getElementById('modalTrasladoStock').classList.remove('hidden');
+      actualizarFormularioTraslado();
+      document.getElementById('trasladoCantidad').focus();
+    }
 
-      const etiqueta = grupo.esGrupoAbierto ? 'abiertos' : 'sellados';
-      const origenElegido = prompt(`¿Desde dónde moverás frascos ${etiqueta} de "${grupo.nombre}"?\n\n1. Tienda Local (${grupo.local})\n2. Alpha Móvil (${grupo.movil})`, grupo.local > 0 ? '1' : '2');
-      if (origenElegido === null) return;
-      const origen = origenElegido.trim() === '1' ? 'Tienda Local' : origenElegido.trim() === '2' ? 'Alpha Móvil' : null;
-      if (!origen) return alert('Selecciona 1 para Tienda Local o 2 para Alpha Móvil.');
+    function cerrarModalTrasladoStock() {
+      document.getElementById('modalTrasladoStock').classList.add('hidden');
+      grupoTrasladoActual = null;
+    }
 
+    function actualizarFormularioTraslado() {
+      const grupo = gruposAbiertosInventario[grupoTrasladoActual];
+      const origen = document.querySelector('input[name="trasladoOrigen"]:checked')?.value;
+      const destino = origen === 'Tienda Local' ? 'Alpha Móvil' : origen === 'Alpha Móvil' ? 'Tienda Local' : null;
+      const filas = !grupo || !origen ? [] : (origen === 'Tienda Local' ? grupo.filasLocal : grupo.filasMovil);
+      const disponibles = filas.reduce((total, fila) => total + Math.max(0, Number(fila.stock) || 0), 0);
+      const cantidad = document.getElementById('trasladoCantidad');
+      document.getElementById('trasladoDestino').innerText = destino || 'Selecciona un origen';
+      document.getElementById('trasladoMaximo').innerText = origen ? `Máximo disponible: ${disponibles} ${disponibles === 1 ? 'frasco' : 'frascos'}` : 'Selecciona una ubicación para ver el stock disponible.';
+      cantidad.max = disponibles || 1;
+      if (Number(cantidad.value) > disponibles) cantidad.value = disponibles || 1;
+      validarCantidadTraslado();
+    }
+
+    function validarCantidadTraslado() {
+      const grupo = gruposAbiertosInventario[grupoTrasladoActual];
+      const origen = document.querySelector('input[name="trasladoOrigen"]:checked')?.value;
+      const filas = !grupo || !origen ? [] : (origen === 'Tienda Local' ? grupo.filasLocal : grupo.filasMovil);
+      const disponibles = filas.reduce((total, fila) => total + Math.max(0, Number(fila.stock) || 0), 0);
+      const cantidad = Number(document.getElementById('trasladoCantidad').value);
+      document.getElementById('btnConfirmarTraslado').disabled = !origen || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > disponibles;
+    }
+
+    async function confirmarTrasladoPerfume() {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden cambiar la ubicación del inventario.');
+      const grupo = gruposAbiertosInventario[grupoTrasladoActual];
+      if (!grupo) return cerrarModalTrasladoStock();
+      const origen = document.querySelector('input[name="trasladoOrigen"]:checked')?.value;
+      if (!origen) return;
       const destino = origen === 'Tienda Local' ? 'Alpha Móvil' : 'Tienda Local';
       const filasOrigen = origen === 'Tienda Local' ? grupo.filasLocal : grupo.filasMovil;
       const disponibles = filasOrigen.reduce((total, fila) => total + Math.max(0, Number(fila.stock) || 0), 0);
-      if (!disponibles) return alert(`No hay frascos ${etiqueta} disponibles en ${origen}.`);
-
-      const cantidadTexto = prompt(`¿Cuántos frascos mover de ${origen} a ${destino}?\nDisponibles: ${disponibles}`, '1');
-      if (cantidadTexto === null) return;
-      const cantidad = Number(cantidadTexto);
-      if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > disponibles) return alert(`Ingresa una cantidad entre 1 y ${disponibles}.`);
-      if (!confirm(`¿Confirmas mover ${cantidad} frasco(s) de "${grupo.nombre}" de ${origen} a ${destino}?`)) return;
+      const cantidad = Number(document.getElementById('trasladoCantidad').value);
+      if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > disponibles) return validarCantidadTraslado();
+      const botonTraslado = document.getElementById('btnConfirmarTraslado');
+      botonTraslado.disabled = true;
+      botonTraslado.innerText = 'Moviendo…';
 
       let pendientes = cantidad;
       const cambios = [];
@@ -504,9 +547,12 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             await client.from('productos').update(grupo.esGrupoAbierto ? { stock: cambio.stockAnterior, ml_restantes: cambio.mlAnterior } : { stock: cambio.stockAnterior }).eq('id', cambio.id).eq('stock', cambio.stockRestante);
           }
         }
+        botonTraslado.innerText = 'Confirmar traslado';
+        botonTraslado.disabled = false;
         return alert('No se completó el cambio de ubicación: ' + error.message);
       }
 
+      cerrarModalTrasladoStock();
       alert(`Se movieron ${cantidad} frasco(s) de ${origen} a ${destino}.`);
       cargarTodo();
     }

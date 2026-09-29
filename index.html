@@ -355,6 +355,39 @@
 
     <div id="avisoApp" class="toast-region" role="status" aria-live="polite"></div>
 
+    <div id="modalTrasladoStock" class="modal-overlay hidden" onclick="if(event.target === this) cerrarModalTrasladoStock()">
+      <div class="modal-content traslado-modal" role="dialog" aria-modal="true" aria-labelledby="trasladoTitulo">
+        <button type="button" class="traslado-cerrar" aria-label="Cerrar" onclick="cerrarModalTrasladoStock()">×</button>
+        <div class="traslado-icono">↔️</div>
+        <p class="traslado-etiqueta">GESTIÓN DE INVENTARIO</p>
+        <h3 id="trasladoTitulo">Mover perfume</h3>
+        <p id="trasladoNombre" class="traslado-nombre"></p>
+        <p class="traslado-ayuda">Elige de dónde saldrán las unidades. Se moverán al otro punto de venta.</p>
+        <div class="traslado-ubicaciones">
+          <label class="traslado-opcion" for="trasladoOrigenLocal">
+            <input type="radio" name="trasladoOrigen" id="trasladoOrigenLocal" value="Tienda Local" onchange="actualizarFormularioTraslado()">
+            <span class="traslado-opcion-icono">🏬</span><span class="traslado-opcion-texto">Tienda Local</span>
+            <strong id="trasladoStockLocal">0</strong><small>disponibles</small>
+          </label>
+          <label class="traslado-opcion" for="trasladoOrigenMovil">
+            <input type="radio" name="trasladoOrigen" id="trasladoOrigenMovil" value="Alpha Móvil" onchange="actualizarFormularioTraslado()">
+            <span class="traslado-opcion-icono">🚐</span><span class="traslado-opcion-texto">Alpha Móvil</span>
+            <strong id="trasladoStockMovil">0</strong><small>disponibles</small>
+          </label>
+        </div>
+        <div class="traslado-resumen"><span>Destino</span><strong id="trasladoDestino">Selecciona un origen</strong></div>
+        <div class="form-group traslado-cantidad">
+          <label for="trasladoCantidad">¿Cuántas unidades mover?</label>
+          <input type="number" id="trasladoCantidad" min="1" step="1" value="1" inputmode="numeric" oninput="validarCantidadTraslado()">
+          <small id="trasladoMaximo">Selecciona una ubicación para ver el stock disponible.</small>
+        </div>
+        <div class="traslado-acciones">
+          <button type="button" class="btn-sec" onclick="cerrarModalTrasladoStock()">Cancelar</button>
+          <button type="button" id="btnConfirmarTraslado" onclick="confirmarTrasladoPerfume()" disabled>Confirmar traslado</button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL COMPROBANTE -->
     <div id="modalComprobante" class="modal-overlay hidden">
       <div class="modal-content">
