@@ -441,7 +441,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
           if (mover === stockAnterior) {
             const { data, error } = await client.from('productos').update({ ubicacion_stock: destino })
-              .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).select('id').maybeSingle();
+              .eq('id', fila.id).eq('stock', stockAnterior).select('id').maybeSingle();
             if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
             cambios.push({ tipo: 'mover', id: fila.id, origen, destino, stock: stockAnterior });
           } else if (grupo.esGrupoAbierto) {
@@ -450,7 +450,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             const stockRestante = stockAnterior - mover;
             const mlRestantes = Math.max(0, mlAnterior - mlTrasladados);
             const { data, error } = await client.from('productos').update({ stock: stockRestante, ml_restantes: mlRestantes })
-              .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).eq('ml_restantes', fila.ml_restantes).select('id').maybeSingle();
+              .eq('id', fila.id).eq('stock', stockAnterior).eq('ml_restantes', fila.ml_restantes).select('id').maybeSingle();
             if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
 
             const { data: nuevaFila, error: errorInsert } = await client.from('productos').insert([{
@@ -477,7 +477,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           } else {
             const stockRestante = stockAnterior - mover;
             const { data, error } = await client.from('productos').update({ stock: stockRestante })
-              .eq('id', fila.id).eq('ubicacion_stock', origen).eq('stock', stockAnterior).select('id').maybeSingle();
+              .eq('id', fila.id).eq('stock', stockAnterior).select('id').maybeSingle();
             if (error || !data) throw new Error(error?.message || 'El inventario cambió durante el traslado.');
             const { data: nuevaFila, error: errorInsert } = await client.from('productos').insert([{
               nombre: fila.nombre, tipo: fila.tipo, tamano: fila.tamano, precio: fila.precio,
