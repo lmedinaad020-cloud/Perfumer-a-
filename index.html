@@ -63,12 +63,19 @@
                 <option value="Decant">Decant (Fraccionado)</option>
               </select>
             </div>
-
             <div class="form-group">
-              <label>Buscar perfume</label>
-              <div class="search-box" style="margin:0;">
-                <input type="text" id="itemBuscador" placeholder="Escribe el nombre..." oninput="filtrarPerfumesVenta()">
-              </div>
+              <label>¿Dónde se vendió? (de aquí se descontará el stock)</label>
+              <select id="vtaCanal">
+                <option value="Alpha Móvil" selected>Alpha Móvil</option>
+                <option value="Tienda Local">Tienda Local</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Buscar perfume</label>
+            <div class="search-box" style="margin:0;">
+              <input type="text" id="itemBuscador" placeholder="Escribe el nombre..." oninput="filtrarPerfumesVenta()">
             </div>
           </div>
 
@@ -96,13 +103,6 @@
                 <option value="30ml">30ml</option>
               </select>
             </div>
-            <div id="grpUbicacionDecant" class="form-group hidden">
-              <label>Ubicación del frasco abierto</label>
-              <select id="itemUbicacionDecant" onchange="actualizarOpcionesVenta()">
-                <option value="Alpha Móvil" selected>Alpha Móvil</option>
-                <option value="Tienda Local">Tienda Local</option>
-              </select>
-            </div>
             <div class="form-group">
               <label>Cantidad</label>
               <input type="number" id="itemCantidad" value="1" min="1">
@@ -124,23 +124,13 @@
 
         <form id="formVenta" style="margin-top:18px;">
           <h4 style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem;">2. Datos del pago, envío y observaciones</h4>
-          <div class="grid-2">
+          <div class="grid-2" style="grid-template-columns:1fr;">
             <div class="form-group">
               <label>Método de pago</label>
               <select id="vtaMetodoPago">
                 <option value="Yape">Yape / Plin</option>
                 <option value="Efectivo">Efectivo</option>
                 <option value="Tarjeta">Tarjeta</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Canal de venta</label>
-              <select id="vtaCanal">
-                <option value="Alpha Móvil" selected>Alpha Móvil</option>
-                <option value="Tienda Local">Tienda Local</option>
-                <option value="Instagram">Instagram</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Delivery Presencial">Delivery Presencial</option>
               </select>
             </div>
           </div>

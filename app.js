@@ -868,19 +868,23 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const isDecant = itemTipoVal === 'Decant';
       
       document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
-      document.getElementById('grpUbicacionDecant').classList.toggle('hidden', !isDecant);
-      const canalActual = document.getElementById('vtaCanal').value;
-      if (isDecant && ['Tienda Local', 'Alpha Móvil'].includes(canalActual)) document.getElementById('itemUbicacionDecant').value = canalActual;
       
       const tipo = isDecant ? 'Perfume para Decant' : 'Perfume Sellado';
-      const ubicacion = document.getElementById('itemUbicacionDecant').value;
-      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query) && (!isDecant || (p.ubicacion_stock || 'Tienda Local') === ubicacion));
+      const ubicacion = document.getElementById('vtaCanal').value;
+      const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query) && (p.ubicacion_stock || 'Tienda Local') === ubicacion);
       
       const selectPerfume = document.getElementById('itemPerfume');
+      const perfumeSeleccionado = selectPerfume.value;
+      const productoAnterior = listaProductos.find(p => String(p.id) === String(perfumeSeleccionado));
       if (filtrados.length === 0) {
-        selectPerfume.innerHTML = `<option value="">${isDecant ? 'Sin perfumes abiertos con stock en ' + ubicacion : '-- Sin resultados disponibles --'}</option>`;
+        selectPerfume.innerHTML = `<option value="">${isDecant ? 'Sin perfumes abiertos' : 'Sin perfumes sellados'} con stock en ${ubicacion}</option>`;
       } else {
         selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} [${p.tamano || '100ml'}] (Stock: ${p.stock})</option>`).join('');
+        const mismoPerfume = productoAnterior && filtrados.find(p =>
+          p.nombre.trim().toLocaleLowerCase() === productoAnterior.nombre.trim().toLocaleLowerCase()
+          && (p.tamano || '100ml') === (productoAnterior.tamano || '100ml'));
+        if (mismoPerfume) selectPerfume.value = String(mismoPerfume.id);
+        else if (filtrados.some(p => String(p.id) === String(perfumeSeleccionado))) selectPerfume.value = perfumeSeleccionado;
       }
 
       mostrarPreviewPerfumeVenta();
@@ -1069,7 +1073,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         carritoVenta = Array.isArray(borrador.carritoVenta) ? borrador.carritoVenta : [];
         comprobanteBase64 = borrador.comprobanteBase64 || null;
         document.getElementById('vtaNotas').value = borrador.vtaNotas || '';
-        if (borrador.vtaCanal) document.getElementById('vtaCanal').value = borrador.vtaCanal;
+        if (borrador.vtaCanal && ['Alpha Móvil', 'Tienda Local'].includes(borrador.vtaCanal)) document.getElementById('vtaCanal').value = borrador.vtaCanal;
         if (borrador.vtaMetodoPago) document.getElementById('vtaMetodoPago').value = borrador.vtaMetodoPago;
         if (comprobanteBase64) {
           document.getElementById('imgComprobantePreview').src = comprobanteBase64;
@@ -1201,7 +1205,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     }
 
     function ofrecerRegaloDecant3ml() {
-      const ubicacionRegalo = document.getElementById('itemUbicacionDecant').value;
+      const ubicacionRegalo = document.getElementById('vtaCanal').value;
       const perfumesAbiertos = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0 && (p.ubicacion_stock || 'Tienda Local') === ubicacionRegalo);
       if (!perfumesAbiertos.length) {
         alert('⚠️ No hay perfumes abiertos disponibles para preparar el decant de regalo.');
@@ -1215,7 +1219,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     function filtrarRegalosModal() {
       const query = document.getElementById('regaloBuscador').value.toLowerCase().trim();
-      const ubicacionRegalo = document.getElementById('itemUbicacionDecant').value;
+      const ubicacionRegalo = document.getElementById('vtaCanal').value;
       perfumesRegaloFiltrados = listaProductos.filter(p => p.tipo === 'Perfume para Decant' && p.stock > 0 && (p.ubicacion_stock || 'Tienda Local') === ubicacionRegalo && p.nombre.toLowerCase().includes(query));
 
       const selectRegalo = document.getElementById('selectRegaloModal');
@@ -1599,7 +1603,21 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const campo = document.getElementById(id);
       campo.addEventListener('input', guardarBorradorVenta);
       campo.addEventListener('change', () => {
-        if (id === 'vtaCanal') filtrarPerfumesVenta();
+        if (id === 'vtaCanal') {
+          const cambioIncompatible = carritoVenta.some(item => {
+            const producto = listaProductos.find(p => String(p.id) === String(item.producto_id));
+            const ubicacionItem = item.ubicacion_stock || producto?.ubicacion_stock || 'Tienda Local';
+            return ubicacionItem !== campo.value;
+          });
+          if (cambioIncompatible) {
+            const primerItem = carritoVenta[0];
+            const producto = listaProductos.find(p => String(p.id) === String(primerItem.producto_id));
+            campo.value = primerItem.ubicacion_stock || producto?.ubicacion_stock || 'Tienda Local';
+            alert('Para cambiar la ubicación de la venta, primero retira del carrito los productos agregados desde la otra ubicación.');
+          } else {
+            filtrarPerfumesVenta();
+          }
+        }
         guardarBorradorVenta();
       });
     });
