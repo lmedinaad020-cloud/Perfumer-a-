@@ -232,6 +232,95 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       renderizarStock();
     }
 
+    function cerrarModalInventario() {
+      document.getElementById('modalDetalleInventario').classList.add('hidden');
+      document.getElementById('contenidoDetalleInventario').replaceChildren();
+    }
+
+    async function registrarMovimientoInventario(movimiento) {
+      const { error } = await client.from('inventario_movimientos').insert([{
+        ...movimiento,
+        registrado_por: usuarioActual?.email || null
+      }]);
+      if (error) {
+        console.error('No se pudo guardar el movimiento de inventario:', error);
+        return error;
+      }
+      return null;
+    }
+
+    function eliminarProductoPorId(id) {
+      const producto = listaProductos.find(item => Number(item.id) === Number(id));
+      if (producto) eliminarProducto(producto.id, producto.nombre);
+    }
+
+    function marcarComoVacioPorId(id, stockActual) {
+      const producto = listaProductos.find(item => Number(item.id) === Number(id));
+      if (producto) marcarComoVacio(producto.id, producto.nombre, stockActual);
+    }
+
+    function abrirModalInventario(tipo, referencia) {
+      const esGrupo = tipo === 'grupo';
+      const grupo = esGrupo ? gruposAbiertosInventario[referencia] : null;
+      const producto = esGrupo ? grupo : listaProductos.find(item => Number(item.id) === Number(referencia));
+      if (!producto) return;
+      const imagen = producto.imagen_url || IMG_DEFAULT;
+      const abierto = Boolean(producto.esGrupoAbierto);
+      const local = esGrupo ? Number(producto.local) || 0 : producto.ubicacion_stock === 'Tienda Local' ? Number(producto.stock) || 0 : 0;
+      const movil = esGrupo ? Number(producto.movil) || 0 : producto.ubicacion_stock === 'Alpha Móvil' ? Number(producto.stock) || 0 : 0;
+      const unidades = esGrupo ? producto.filasLocal.concat(producto.filasMovil) : [producto];
+      let acciones = '';
+
+      if (esAdmin()) {
+        if (esGrupo && producto.stock > 0) acciones += `<button type="button" class="btn-sec inventory-modal-wide-action" onclick="cerrarModalInventario();moverPerfumeAbierto(${referencia})">↔️ Cambiar ubicación</button>`;
+        if (abierto) acciones += `<button type="button" class="btn-del" onclick="eliminarUnPerfumeAbierto(${referencia})">🗑️ Eliminar 1 perfume abierto</button>`;
+
+        if (producto.tipo === 'Perfume Sellado') {
+          acciones += `<div class="inventory-location-actions">${unidades.map(fila => `
+            <section class="inventory-location-action">
+              <h4>${fila.ubicacion_stock || 'Tienda Local'} · ${fila.stock} ${fila.stock === 1 ? 'frasco' : 'frascos'}</h4>
+              <p class="inventory-average-help">Registra la compra; el costo promedio se actualizará para el stock de esta ubicación.</p>
+              <div class="inventory-purchase-fields">
+                <div><label for="modalAñadir-${fila.id}">Botellas compradas</label><input type="number" id="modalAñadir-${fila.id}" min="1" step="1" value="1" inputmode="numeric" required></div>
+                <div><label for="modalCosto-${fila.id}">Costo por botella (S/)</label><input type="number" id="modalCosto-${fila.id}" min="0" step="0.01" value="${Number(fila.precio || 0).toFixed(2)}" inputmode="decimal" required></div>
+              </div>
+              <button type="button" class="btn-add" onclick="agregarCantidadPerfumeSellado(${fila.id}, 'modalAñadir-${fila.id}', 'modalCosto-${fila.id}')">＋ Registrar compra</button>
+              <button type="button" class="btn-sec" onclick="editarPreciosDecant(${fila.id})">💰 Editar precios de decants</button>
+              <button type="button" class="btn-sec" onclick="editarProducto(${fila.id})">✏️ Editar producto</button>
+              <button type="button" class="btn-sec" onclick="editarAudioProducto(${fila.id})">🎵 ${fila.audio_url ? 'Cambiar audio' : 'Agregar audio'}</button>
+              ${Number(fila.stock) > 0 ? `<button type="button" class="btn-open" onclick="abrirPerfumeSellado(${fila.id})">🍾 Abrir para decant</button>` : ''}
+              <button type="button" class="btn-del" onclick="eliminarProductoPorId(${fila.id})">🗑️ Eliminar producto</button>
+            </section>`).join('')}</div>`;
+        } else {
+          acciones += `<div class="inventory-actions">
+            <button type="button" class="btn-sec" onclick="editarProducto(${producto.id})">✏️ Editar producto</button>
+            ${producto.tipo !== 'Decant Vacío' ? `<button type="button" class="btn-sec" onclick="editarAudioProducto(${producto.id})">🎵 ${producto.audio_url ? 'Cambiar audio' : 'Agregar audio'}</button>` : ''}
+            <button type="button" class="btn-add" onclick="sumarStockOLote(${producto.id})">➕ Añadir unidades / stock</button>
+            ${producto.tipo === 'Perfume Sellado' && producto.stock > 0 ? `<button type="button" class="btn-open" onclick="abrirPerfumeSellado(${producto.id})">🍾 Abrir para decant</button>` : ''}
+            ${producto.tipo !== 'Perfume Sellado' && producto.stock > 0 ? `<button type="button" class="btn-empty" onclick="marcarComoVacioPorId(${producto.id}, ${producto.stock})">🚫 Marcar 1 menos</button>` : ''}
+            <button type="button" class="btn-del" onclick="eliminarProductoPorId(${producto.id})">🗑️ Eliminar producto</button>
+          </div>`;
+        }
+      }
+
+      const contenido = document.getElementById('contenidoDetalleInventario');
+      contenido.innerHTML = `
+        <div class="inventory-modal-head">
+          <img src="${imagen}" alt="${producto.nombre}" onerror="this.onerror=null;this.src='${IMG_DEFAULT}'">
+          <div><p class="traslado-etiqueta">GESTIÓN DE INVENTARIO</p><h3 id="detalleInventarioTitulo">${producto.nombre}</h3><p>${abierto ? 'Perfume abierto para decants' : producto.tipo || ''} · ${producto.tamano || ''}</p></div>
+        </div>
+        <div class="inventory-modal-counts">
+          <div><span>🏬 Tienda Local</span><strong>${local}</strong></div>
+          <div><span>🚐 Alpha Móvil</span><strong>${movil}</strong></div>
+          <div><span>Total</span><strong>${Number(producto.stock) || 0}</strong></div>
+        </div>
+        ${producto.tipo === 'Perfume Sellado' ? `<div class="sellado-precios"><strong>Perfume: S/ ${Number(producto.precio_sugerido || 0).toFixed(2)}</strong><span>Decants 3 ml: S/ ${Number(producto.precio_decant_3ml || 0).toFixed(2)} · 5 ml: S/ ${Number(producto.precio_decant_5ml || 0).toFixed(2)}</span><span>10 ml: S/ ${Number(producto.precio_decant_10ml || 0).toFixed(2)} · 30 ml: S/ ${Number(producto.precio_decant_30ml || 0).toFixed(2)}</span></div>` : ''}
+        ${abierto ? `<p class="inventory-remaining">Contenido restante: ${Number(producto.mlLocal || 0).toFixed(1)} ml local · ${Number(producto.mlMovil || 0).toFixed(1)} ml Alpha Móvil</p>` : ''}
+        ${esAdmin() ? acciones : '<p class="inventory-readonly">Consulta el stock disponible por ubicación.</p>'}
+      `;
+      document.getElementById('modalDetalleInventario').classList.remove('hidden');
+    }
+
     function renderizarStock() {
       const query = normalizarTexto(document.getElementById('inputBusqueda').value.trim());
 
@@ -308,42 +397,15 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
           const grupoIdx = gruposAbiertosInventario.push(p) - 1;
           const agotado = p.stock <= 0;
           return `
-            <div class="product-card">
-              <div class="product-card-img-wrapper">
-                <img src="${p.imagen_url || IMG_DEFAULT}" class="product-card-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-                <span class="badge product-card-badge">${p.esGrupoAbierto ? `ABIERTO (${p.tamano})` : `SELLADO (${p.tamano})`}</span>
-              </div>
-              <div class="product-card-body">
-                <h4 class="product-card-title">${p.nombre}</h4>
-                ${p.tipo === 'Perfume Sellado' ? `<div class="sellado-precios"><strong>Perfume: S/ ${Number(p.precio_sugerido || 0).toFixed(2)}</strong><span>Decants: 3 ml S/ ${Number(p.precio_decant_3ml || 0).toFixed(2)} · 5 ml S/ ${Number(p.precio_decant_5ml || 0).toFixed(2)}</span><span>10 ml S/ ${Number(p.precio_decant_10ml || 0).toFixed(2)} · 30 ml S/ ${Number(p.precio_decant_30ml || 0).toFixed(2)}</span></div>` : ''}
-                <p class="${p.tipo === 'Perfume Sellado' ? 'sellado-stock-line' : ''}" style="margin:6px 0;font-size:.84rem;color:var(--ivory)"><span>🏬 Tienda Local</span><strong>${p.local} ${p.local === 1 ? 'frasco' : 'frascos'}</strong></p>
-                <p class="${p.tipo === 'Perfume Sellado' ? 'sellado-stock-line' : ''}" style="margin:6px 0;font-size:.84rem;color:var(--ivory)"><span>🚐 Alpha Móvil</span><strong>${p.movil} ${p.movil === 1 ? 'frasco' : 'frascos'}</strong></p>
-                ${p.esGrupoAbierto ? `<p style="margin:6px 0;font-size:.75rem;color:var(--muted)">Contenido restante: ${p.mlLocal.toFixed(1)} ml local · ${p.mlMovil.toFixed(1)} ml Alpha Móvil</p>` : ''}
-                ${agotado ? `<p style="margin:6px 0;color:var(--danger);font-size:.78rem;font-weight:700">${p.esGrupoAbierto ? '⚠️ Sin frascos abiertos disponibles. Abre uno sellado.' : '⚠️ Sin stock sellado disponible.'}</p>` : ''}
-                ${esAdmin() && !agotado ? `
-                  <button type="button" class="btn-sec" style="width:100%;margin-top:8px" onclick="moverPerfumeAbierto(${grupoIdx})">↔️ Cambiar ubicación</button>
-                  ${p.esGrupoAbierto ? `<button type="button" class="btn-del" style="width:100%;margin-top:6px" onclick="eliminarUnPerfumeAbierto(${grupoIdx})">🗑️ Eliminar 1 perfume abierto</button>` : ''}
-                ` : ''}
-                ${esAdmin() && p.tipo === 'Perfume Sellado' ? `
-                  <div class="product-card-actions" style="margin-top:10px">
-                    ${(p.filasLocal.concat(p.filasMovil)).map(fila => `
-                      <div class="sellado-ubicacion-panel">
-                        <div class="sellado-ubicacion-heading"><span>${fila.ubicacion_stock || 'Tienda Local'}</span><strong>${fila.stock} ${fila.stock === 1 ? 'frasco' : 'frascos'}</strong></div>
-                        <div class="sellado-ingreso-rapido">
-                          <label for="cantidadAgregarSellado-${fila.id}">Añadir unidades</label>
-                          <div><input type="number" id="cantidadAgregarSellado-${fila.id}" min="1" step="1" value="1" inputmode="numeric"><button type="button" class="btn-add" onclick="agregarCantidadPerfumeSellado(${fila.id})">＋ Añadir</button></div>
-                        </div>
-                        <button type="button" class="btn-sec" onclick="editarPreciosDecant(${fila.id})">💰 Editar precios de decants</button>
-                        <button type="button" class="btn-sec" onclick="editarProducto(${fila.id})">✏️ Editar producto</button>
-                        <button type="button" class="btn-sec" onclick="editarAudioProducto(${fila.id})">🎵 ${fila.audio_url ? 'Cambiar' : 'Agregar'} audio</button>
-                        ${fila.stock > 0 ? `<button type="button" class="btn-open" onclick="abrirPerfumeSellado(${fila.id})">🍾 Abrir para decant</button>` : ''}
-                        <button type="button" class="btn-del" onclick="eliminarProducto(${fila.id}, '${fila.nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar producto</button>
-                      </div>
-                    `).join('')}
-                  </div>
-                ` : ''}
-              </div>
-            </div>
+            <button type="button" class="product-card inventory-product" onclick="abrirModalInventario('grupo', ${grupoIdx})" aria-label="Ver ${p.nombre} y administrar inventario">
+              <img class="inventory-card-image" src="${p.imagen_url || IMG_DEFAULT}" alt="${p.nombre}" loading="lazy" onerror="this.onerror=null;this.src='${IMG_DEFAULT}'">
+              <span class="inventory-card-info">
+                <strong class="inventory-card-name">${p.nombre}</strong>
+                <span class="inventory-card-type">${p.esGrupoAbierto ? `Abierto · ${p.tamano}` : `Sellado · ${p.tamano}`}</span>
+                <span class="inventory-card-locations"><span>🏬 Local <b>${p.local}</b></span><span>🚐 Alpha Móvil <b>${p.movil}</b></span></span>
+                <span class="inventory-card-total">Total: ${p.stock} ${p.stock === 1 ? 'perfume' : 'perfumes'} <span>· Ver gestión ›</span></span>
+              </span>
+            </button>
           `;
         }
         let badgeClass = 'badge-ok';
@@ -373,47 +435,15 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         const precioSugeridoVal = parseFloat(p.precio_sugerido || 0);
 
         return `
-          <div class="product-card">
-            <div class="product-card-img-wrapper">
-              <img src="${p.imagen_url || IMG_DEFAULT}" class="product-card-img" alt="${p.nombre}" onerror="this.src='${IMG_DEFAULT}'">
-              <span class="badge product-card-badge">${labelTipo}</span>
-            </div>
-            <div class="product-card-body">
-              <div>
-                <h4 class="product-card-title">${p.nombre}</h4>
-                <div style="margin-bottom:6px; font-size:0.83rem;">
-                  Precio Sugerido (PVP): <strong style="color:var(--gold-light);">S/ ${precioSugeridoVal.toFixed(2)}</strong>
-                </div>
-                ${esAdmin() ? `
-                  <div class="product-card-meta">
-                    ${p.tipo === 'Decant Vacío' ? 
-                      `Costo Unit/Envase: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong>` : 
-                      `Costo Botella: <strong style="color:var(--gold-light);">S/ ${costoBaseVal.toFixed(2)}</strong> <br><span style="font-size:0.7rem; color:var(--muted);">(Costo/ml: S/ ${(costoBaseVal/mlBase).toFixed(2)})</span>`
-                    }
-                  </div>` : ''}
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                  <span class="badge ${badgeClass}">${badgeText}</span>
-                  <span style="font-size:0.75rem; color:var(--muted);">${p.stock} unids.</span>
-                </div>
-                ${p.tipo === 'Perfume para Decant' && Number(p.ml_restantes ?? (p.stock * mlBase)) <= 0 ? `<p style="color:var(--danger);font-size:.78rem;font-weight:700">⚠️ Frasco agotado: abrir uno sellado (${p.ubicacion_stock || 'Tienda Local'}).</p>` : ''}
-                ${p.tipo === 'Perfume para Decant' ? `<p style="font-size:.75rem;color:var(--muted);margin:4px 0">Contenido: ${Number(p.ml_restantes ?? (p.stock * mlBase)).toFixed(1)} ml · ${p.ubicacion_stock || 'Tienda Local'}</p>` : ''}
-                <div class="product-card-stock-bar">
-                  <div class="product-card-stock-fill" style="width: ${pct}%; background: ${barColor};"></div>
-                </div>
-              </div>
-
-              ${esAdmin() ? `
-                <div class="product-card-actions">
-                  <button onclick="editarProducto(${p.id})" class="btn-sec" style="padding:4px 8px; font-size:0.75rem;">✏️ Editar Producto</button>
-                  ${p.tipo !== 'Decant Vacío' ? `<button onclick="editarAudioProducto(${p.id})" class="btn-sec" style="padding:4px 8px; font-size:0.75rem;">🎵 ${p.audio_url ? 'Cambiar' : 'Agregar'} audio</button>` : ''}
-                  <button onclick="sumarStockOLote(${p.id})" class="btn-add">➕ Ingresar Nuevo Lote / Stock</button>
-                  ${p.tipo === 'Perfume Sellado' && p.stock > 0 ? `<button onclick="abrirPerfumeSellado(${p.id})" class="btn-open">🍾 Abrir p/ Decant</button>` : ''}
-                  ${p.tipo !== 'Perfume Sellado' && p.stock > 0 ? `<button onclick="marcarComoVacio(${p.id}, '${p.nombre.replace(/'/g, "\\'")}', ${p.stock})" class="btn-empty">🚫 Marcar 1 menos</button>` : ''}
-                  <button onclick="eliminarProducto(${p.id}, '${p.nombre.replace(/'/g, "\\\'")}')" class="btn-del" style="margin-top:2px;">🗑️ Eliminar Producto</button>
-                </div>
-              ` : ''}
-            </div>
-          </div>
+          <button type="button" class="product-card inventory-product" onclick="abrirModalInventario('producto', ${p.id})" aria-label="Ver ${p.nombre} y administrar inventario">
+            <img class="inventory-card-image" src="${p.imagen_url || IMG_DEFAULT}" alt="${p.nombre}" loading="lazy" onerror="this.onerror=null;this.src='${IMG_DEFAULT}'">
+            <span class="inventory-card-info">
+              <strong class="inventory-card-name">${p.nombre}</strong>
+              <span class="inventory-card-type">${labelTipo}</span>
+              <span class="inventory-card-locations"><span>🏬 Local <b>${p.ubicacion_stock === 'Tienda Local' ? p.stock : 0}</b></span><span>🚐 Alpha Móvil <b>${p.ubicacion_stock === 'Alpha Móvil' ? p.stock : 0}</b></span></span>
+              <span class="inventory-card-total">Total: ${p.stock} ${p.stock === 1 ? 'unidad' : 'unidades'} <span>· Ver gestión ›</span></span>
+            </span>
+          </button>
         `;
       }).join('');
     }
@@ -563,7 +593,18 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       }
 
       cerrarModalTrasladoStock();
+      const errorMovimiento = await registrarMovimientoInventario({
+        producto_id: cambios.map(cambio => String(cambio.id)).join(','),
+        producto_nombre: grupo.nombre,
+        producto_tipo: grupo.tipo,
+        producto_tamano: grupo.tamano,
+        tipo_movimiento: 'traslado',
+        cantidad,
+        ubicacion_origen: origen,
+        ubicacion_destino: destino
+      });
       alert(`Se movieron ${cantidad} frasco(s) de ${origen} a ${destino}.`);
+      if (errorMovimiento) alert('El traslado se completó, pero no se registró en el historial. Ejecuta database/inventario-movimientos.sql.');
       cargarTodo();
     }
 
@@ -630,7 +671,19 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
         if (error) alert('Error al actualizar lote: ' + error.message);
         else {
+          const errorMovimiento = await registrarMovimientoInventario({
+            producto_id: String(producto.id),
+            producto_nombre: producto.nombre,
+            producto_tipo: producto.tipo,
+            producto_tamano: producto.tamano,
+            tipo_movimiento: 'compra',
+            cantidad: cantLote,
+            ubicacion_destino: producto.ubicacion_stock,
+            costo_unitario: nuevoCostoUnitario,
+            costo_total: precioLote
+          });
           alert(`¡Lote agregado con éxito!\n- Envases agregados: ${cantLote}\n- Nuevo Stock Total: ${nuevoStockTotal}\n- Nuevo Costo Unitario por Envase: S/ ${nuevoCostoUnitario.toFixed(2)}`);
+          if (errorMovimiento) alert('El lote se agregó, pero no se registró en el historial. Ejecuta database/inventario-movimientos.sql.');
           cargarTodo();
         }
         return;
@@ -660,24 +713,75 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       if (error) alert('Error al actualizar stock: ' + error.message);
       else {
+        const cantidadAñadida = parseInt(cantidadStr);
+        const errorMovimiento = await registrarMovimientoInventario({
+          producto_id: String(producto.id),
+          producto_nombre: producto.nombre,
+          producto_tipo: producto.tipo,
+          producto_tamano: producto.tamano,
+          tipo_movimiento: 'compra',
+          cantidad: cantidadAñadida,
+          ubicacion_destino: producto.ubicacion_stock,
+          costo_unitario: nuevoPrecio,
+          costo_total: nuevoPrecio * cantidadAñadida
+        });
         alert(`¡Stock actualizado! Nuevo total: ${nuevoStock} unidades.`);
+        if (errorMovimiento) alert('El stock se actualizó, pero no se registró en el historial. Ejecuta database/inventario-movimientos.sql.');
         cargarTodo();
       }
     }
 
-    async function agregarCantidadPerfumeSellado(id) {
+    async function agregarCantidadPerfumeSellado(id, campoId = `cantidadAgregarSellado-${id}`, costoId = null) {
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden modificar el inventario.');
       const producto = listaProductos.find(p => String(p.id) === String(id) && p.tipo === 'Perfume Sellado');
-      const campoCantidad = document.getElementById(`cantidadAgregarSellado-${id}`);
-      if (!producto || !campoCantidad) return alert('No se encontró el perfume. Actualiza el inventario e inténtalo de nuevo.');
+      const campoCantidad = document.getElementById(campoId);
+      const campoCosto = costoId ? document.getElementById(costoId) : null;
+      if (!producto || !campoCantidad || !campoCosto) return alert('No se encontró el perfume o los datos de compra. Actualiza el inventario e inténtalo de nuevo.');
       const cantidad = Number(campoCantidad.value);
       if (!Number.isInteger(cantidad) || cantidad < 1) return alert('Ingresa una cantidad entera mayor que cero.');
+      if (!campoCosto.value.trim()) return alert('Ingresa el costo de compra por botella.');
+      const costoNuevo = Number(campoCosto.value);
+      if (!Number.isFinite(costoNuevo) || costoNuevo < 0) return alert('Ingresa un costo de compra válido por botella.');
       const stockActual = Number(producto.stock) || 0;
       const nuevoStock = stockActual + cantidad;
-      const { data, error } = await client.from('productos').update({ stock: nuevoStock })
+      const mismaUbicacion = listaProductos.filter(p => p.tipo === 'Perfume Sellado'
+        && p.nombre === producto.nombre
+        && (p.tamano || '100ml') === (producto.tamano || '100ml')
+        && p.ubicacion_stock === producto.ubicacion_stock);
+      const stockUbicacion = mismaUbicacion.reduce((total, p) => total + Math.max(0, Number(p.stock) || 0), 0);
+      const valorUbicacion = mismaUbicacion.reduce((total, p) => total + Math.max(0, Number(p.stock) || 0) * Math.max(0, Number(p.precio) || 0), 0);
+      const costoPromedio = (valorUbicacion + cantidad * costoNuevo) / (stockUbicacion + cantidad);
+      const idsUbicacion = mismaUbicacion.map(p => p.id);
+      const { data, error } = await client.from('productos').update({ stock: nuevoStock, precio: costoPromedio })
         .eq('id', id).eq('stock', stockActual).select('id').maybeSingle();
-      if (error || !data) return alert('No se pudo añadir stock. Actualiza el inventario e inténtalo otra vez.' + (error?.message ? ` ${error.message}` : ''));
-      alert(`Se añadieron ${cantidad} ${cantidad === 1 ? 'frasco' : 'frascos'} de "${producto.nombre}" en ${producto.ubicacion_stock || 'Tienda Local'}. Nuevo stock: ${nuevoStock}.`);
+      if (error || !data) return alert('No se pudo registrar la compra. Actualiza el inventario e inténtalo de nuevo.' + (error?.message ? ` ${error.message}` : ''));
+      const idsRestantes = idsUbicacion.filter(filaId => Number(filaId) !== Number(id));
+      if (idsRestantes.length) {
+        const { error: errorCosto } = await client.from('productos').update({ precio: costoPromedio }).in('id', idsRestantes);
+        if (errorCosto) {
+          const { error: errorReversion } = await client.from('productos').update({ stock: stockActual, precio: producto.precio })
+            .eq('id', id).eq('stock', nuevoStock);
+          if (errorReversion) return alert('La compra se registró, pero no se pudo aplicar el costo promedio a todos los registros. Contacta al administrador antes de registrar más stock.');
+          return alert('No se pudo aplicar el costo promedio. Se revirtió el ingreso de stock; inténtalo de nuevo. ' + errorCosto.message);
+        }
+      }
+      const errorMovimiento = await registrarMovimientoInventario({
+        producto_id: String(producto.id),
+        producto_nombre: producto.nombre,
+        producto_tipo: producto.tipo,
+        producto_tamano: producto.tamano,
+        tipo_movimiento: 'compra',
+        cantidad,
+        ubicacion_destino: producto.ubicacion_stock,
+        costo_unitario: costoNuevo,
+        costo_total: costoNuevo * cantidad
+      });
+      if (errorMovimiento) {
+        alert('El stock y el costo promedio se actualizaron, pero no se guardó el historial de compra. Ejecuta database/inventario-movimientos.sql y avisa al administrador.');
+        cargarTodo();
+        return;
+      }
+      alert(`Compra registrada: ${cantidad} ${cantidad === 1 ? 'frasco' : 'frascos'} de "${producto.nombre}" en ${producto.ubicacion_stock || 'Tienda Local'}. Costo promedio por botella en esa ubicación: S/ ${costoPromedio.toFixed(2)}.`);
       cargarTodo();
     }
 
@@ -1423,7 +1527,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         nuevo.audio_url = client.storage.from('catalogo-audios').getPublicUrl(rutaAudio).data.publicUrl;
       }
 
-      const { error } = await client.from('productos').insert([nuevo]);
+      const { data: productoCreado, error } = await client.from('productos').insert([nuevo]).select('id').single();
       if (error) {
         if (nuevo.audio_url) {
           const rutaAudio = nuevo.audio_url.split('/catalogo-audios/').pop();
@@ -1432,7 +1536,19 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         alert('Error: ' + error.message);
       }
       else {
+        const errorMovimiento = await registrarMovimientoInventario({
+          producto_id: String(productoCreado.id),
+          producto_nombre: nuevo.nombre,
+          producto_tipo: nuevo.tipo,
+          producto_tamano: nuevo.tamano,
+          tipo_movimiento: 'alta_inicial',
+          cantidad: cantidadReg,
+          ubicacion_destino: nuevo.ubicacion_stock,
+          costo_unitario: costoUnitarioCalculado,
+          costo_total: costoUnitarioCalculado * cantidadReg
+        });
         alert('Registrado correctamente');
+        if (errorMovimiento) alert('El producto se creó, pero no se pudo guardar su movimiento. Ejecuta la configuración SQL del historial y vuelve a registrar la compra si corresponde.');
         document.getElementById('formStock').reset();
         toggleCamposStock();
         cargarTodo();
@@ -2070,18 +2186,25 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       document.getElementById('modalImgComprobante').src = '';
     }
 
-    function exportarExcel() {
+    async function exportarExcel() {
       if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden descargar el archivo de ventas.');
-      if (!listaVentasCache || !listaVentasCache.length) return alert('No hay ventas registradas para exportar.');
       const desde = document.getElementById('fechaReporteDesde').value;
       const hasta = document.getElementById('fechaReporteHasta').value;
-      const ventasParaExportar = listaVentasCache.filter(v => {
+      const ventasParaExportar = (listaVentasCache || []).filter(v => {
         const f = new Date(v.fecha);
         const fecha = f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
         return (!desde || fecha >= desde) && (!hasta || fecha <= hasta);
       });
-      if (!ventasParaExportar.length) return alert('No hay ventas en el período seleccionado.');
       if (typeof XLSX === 'undefined') return alert('Error: La librería de Excel aún se está cargando. Por favor reintenta en un momento.');
+      const { data: movimientos, error: errorMovimientos } = await client.from('inventario_movimientos')
+        .select('*').order('fecha', { ascending: false });
+      if (errorMovimientos) return alert('No se pudo cargar el historial de inventario. Ejecuta database/inventario-movimientos.sql en Supabase. ' + errorMovimientos.message);
+      const movimientosParaExportar = (movimientos || []).filter(movimiento => {
+        const f = new Date(movimiento.fecha);
+        const fecha = f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+        return (!desde || fecha >= desde) && (!hasta || fecha <= hasta);
+      });
+      if (!ventasParaExportar.length && !movimientosParaExportar.length) return alert('No hay ventas ni movimientos de inventario en el período seleccionado.');
 
       const datosExcel = [
         ["ID", "Fecha y Hora", "Productos Vendidos", "Venta Total (S/)", "Margen de Contribución (S/)", "Vendedor", "Canal / Pago", "Notas / Observaciones", "Tiene Comprobante"]
@@ -2133,8 +2256,35 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Ventas");
 
+      const datosInventario = [[
+        'Fecha y hora', 'Movimiento', 'Producto', 'Tipo', 'Tamaño', 'Cantidad',
+        'Ubicación origen', 'Ubicación destino', 'Costo unitario (S/)', 'Costo total (S/)', 'Registrado por'
+      ]];
+      movimientosParaExportar.forEach(movimiento => {
+        const etiquetas = { compra: 'Compra', alta_inicial: 'Alta inicial', traslado: 'Cambio de ubicación' };
+        datosInventario.push([
+          new Date(movimiento.fecha).toLocaleString('es-PE'),
+          etiquetas[movimiento.tipo_movimiento] || movimiento.tipo_movimiento,
+          movimiento.producto_nombre || '',
+          movimiento.producto_tipo || '',
+          movimiento.producto_tamano || '',
+          Number(movimiento.cantidad) || 0,
+          movimiento.ubicacion_origen || '',
+          movimiento.ubicacion_destino || '',
+          movimiento.costo_unitario === null ? '' : Number(movimiento.costo_unitario),
+          movimiento.costo_total === null ? '' : Number(movimiento.costo_total),
+          movimiento.registrado_por || ''
+        ]);
+      });
+      const wsInventario = XLSX.utils.aoa_to_sheet(datosInventario);
+      wsInventario['!cols'] = datosInventario[0].map((titulo, indice) => {
+        const largo = Math.max(String(titulo).length, ...datosInventario.slice(1).map(fila => String(fila[indice] ?? '').length));
+        return { wch: Math.min(Math.max(largo + 2, 12), 38) };
+      });
+      XLSX.utils.book_append_sheet(wb, wsInventario, 'Inventario');
+
       const fechaHoy = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `Reporte_Ventas_ALPHA_${fechaHoy}.xlsx`);
+      XLSX.writeFile(wb, `Reporte_ALPHA_${fechaHoy}.xlsx`);
     }
 
     async function cargarEstadoAsistencia() {

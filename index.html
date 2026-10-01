@@ -243,7 +243,7 @@
           </form>
         </div>
 
-        <h3 style="margin-top:10px;">📦 Catálogo e Inventario</h3>
+        <div class="inventory-heading"><h3>📦 Catálogo e Inventario</h3><span>Control rápido de stock, ubicación y precios</span></div>
 
         <div class="inv-summary-grid">
           <div class="inv-summary-card">
@@ -260,8 +260,20 @@
           </div>
         </div>
         
-        <div class="search-box">
-          <input type="text" id="inputBusqueda" placeholder="Buscar producto por nombre..." oninput="filtrarInventario()">
+        <div class="inventory-toolbar">
+          <div class="search-box">
+            <input type="text" id="inputBusqueda" placeholder="Buscar producto por nombre..." oninput="filtrarInventario()">
+          </div>
+          <div class="inventory-sort">
+            <label for="ordenInventario">Ordenar</label>
+            <select id="ordenInventario" onchange="filtrarInventario()">
+              <option value="nombre">Nombre (A–Z)</option>
+              <option value="stock_asc">Menor stock</option>
+              <option value="stock_desc">Mayor stock</option>
+              <option value="precio_asc">Menor precio</option>
+              <option value="precio_desc">Mayor precio</option>
+            </select>
+          </div>
         </div>
 
         <div class="inv-filter-chips">
@@ -273,16 +285,6 @@
           <button type="button" class="chip-btn" onclick="filtrarCategoriaChip('AGOTADO', this)">⛔ Agotados</button>
         </div>
 
-        <div class="inventory-sort">
-          <label for="ordenInventario">Ordenar por</label>
-          <select id="ordenInventario" onchange="filtrarInventario()">
-            <option value="nombre">Nombre (A–Z)</option>
-            <option value="stock_asc">Menor stock</option>
-            <option value="stock_desc">Mayor stock</option>
-            <option value="precio_asc">Menor precio</option>
-            <option value="precio_desc">Mayor precio</option>
-          </select>
-        </div>
         <div id="gridInventario" class="inv-grid">Cargando catálogo...</div>
       </div>
 
@@ -290,7 +292,7 @@
       <div id="tab-historial" class="card hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
           <h3 style="margin:0;">📊 Historial y Análisis de Ventas</h3>
-          <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Descargar Excel (.xlsx)</button>
+          <button id="btnExportarExcel" onclick="exportarExcel()" class="btn-add hidden" style="padding:8px 14px; font-size:0.8rem; background:linear-gradient(135deg, #107c41, #084e28); border-color:#21a366;">📊 Excel de ventas e inventario (.xlsx)</button>
         </div>
 
         <div class="report-filters" aria-label="Filtrar reportes por fecha">
@@ -375,6 +377,13 @@
           <button type="button" class="btn-sec" onclick="cerrarModalTrasladoStock()">Cancelar</button>
           <button type="button" id="btnConfirmarTraslado" onclick="confirmarTrasladoPerfume()" disabled>Confirmar traslado</button>
         </div>
+      </div>
+    </div>
+
+    <div id="modalDetalleInventario" class="modal-overlay hidden" onclick="if(event.target === this) cerrarModalInventario()">
+      <div class="modal-content inventory-modal" role="dialog" aria-modal="true" aria-labelledby="detalleInventarioTitulo">
+        <button type="button" class="traslado-cerrar" aria-label="Cerrar" onclick="cerrarModalInventario()">×</button>
+        <div id="contenidoDetalleInventario"></div>
       </div>
     </div>
 
