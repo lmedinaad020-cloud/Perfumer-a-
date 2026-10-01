@@ -139,16 +139,16 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       
       const btnExcel = document.getElementById('btnExportarExcel');
       const btnAsistenciaExcel = document.getElementById('btnExportarAsistencia');
-      const secCrearProducto = document.getElementById('secCrearProducto');
+      const btnCrearProducto = document.getElementById('btnAbrirCrearProducto');
 
       if (esAdmin()) {
         btnExcel.classList.remove('hidden');
         btnAsistenciaExcel.classList.remove('hidden');
-        secCrearProducto.classList.remove('hidden');
+        btnCrearProducto.classList.remove('hidden');
       } else {
         btnExcel.classList.add('hidden');
         btnAsistenciaExcel.classList.add('hidden');
-        secCrearProducto.classList.add('hidden');
+        btnCrearProducto.classList.add('hidden');
       }
 
       await restaurarBorradorVenta();
@@ -237,6 +237,20 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       document.getElementById('contenidoDetalleInventario').replaceChildren();
     }
 
+    function abrirModalCrearProducto() {
+      if (!esAdmin()) return alert('Acceso denegado: Solo los administradores pueden crear productos.');
+      const modal = document.getElementById('secCrearProducto');
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      toggleCamposStock();
+      document.getElementById('stkTipo').focus();
+    }
+
+    function cerrarModalCrearProducto() {
+      document.getElementById('secCrearProducto').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
     async function registrarMovimientoInventario(movimiento) {
       const { error } = await client.from('inventario_movimientos').insert([{
         ...movimiento,
@@ -321,23 +335,9 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       document.getElementById('modalDetalleInventario').classList.remove('hidden');
     }
 
-    function renderizarStock() {
-      const query = normalizarTexto(document.getElementById('inputBusqueda').value.trim());
-
-      document.getElementById('metrTotal').innerText = listaProductos.length;
-      document.getElementById('metrBajo').innerText = listaProductos.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 4).length;
-      document.getElementById('metrAgotado').innerText = listaProductos.filter(p => Number(p.stock) <= 0).length;
-
-      let filtrados = listaProductos.filter(p => normalizarTexto(String(p.nombre) + ' ' + String(p.tipo) + ' ' + String(p.tamano || '')).includes(query));
-
-      if (categoriaFiltroActual === 'SELLADO') filtrados = filtrados.filter(p => p.tipo === 'Perfume Sellado');
-      else if (categoriaFiltroActual === 'DECANT') filtrados = filtrados.filter(p => p.tipo === 'Perfume para Decant');
-      else if (categoriaFiltroActual === 'VACIO') filtrados = filtrados.filter(p => p.tipo === 'Decant Vacío');
-      else if (categoriaFiltroActual === 'BAJO') filtrados = filtrados.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 4);
-      else if (categoriaFiltroActual === 'AGOTADO') filtrados = filtrados.filter(p => Number(p.stock) <= 0);
-
+    function agruparProductosInventario(productos) {
       const gruposAbiertos = new Map();
-      filtrados = filtrados.reduce((resultado, producto) => {
+      return productos.reduce((resultado, producto) => {
         if (!['Perfume para Decant', 'Perfume Sellado'].includes(producto.tipo)) {
           resultado.push(producto);
           return resultado;
@@ -376,6 +376,23 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         grupo.stock += cantidadBotellas;
         return resultado;
       }, []);
+    }
+
+    function renderizarStock() {
+      const query = normalizarTexto(document.getElementById('inputBusqueda').value.trim());
+      const productosAgrupados = agruparProductosInventario(listaProductos);
+
+      document.getElementById('metrTotal').innerText = productosAgrupados.length;
+      document.getElementById('metrBajo').innerText = productosAgrupados.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 4).length;
+      document.getElementById('metrAgotado').innerText = productosAgrupados.filter(p => Number(p.stock) <= 0).length;
+
+      let filtrados = productosAgrupados.filter(p => normalizarTexto(String(p.nombre) + ' ' + String(p.tipo) + ' ' + String(p.tamano || '')).includes(query));
+
+      if (categoriaFiltroActual === 'SELLADO') filtrados = filtrados.filter(p => p.tipo === 'Perfume Sellado');
+      else if (categoriaFiltroActual === 'DECANT') filtrados = filtrados.filter(p => p.tipo === 'Perfume para Decant');
+      else if (categoriaFiltroActual === 'VACIO') filtrados = filtrados.filter(p => p.tipo === 'Decant Vacío');
+      else if (categoriaFiltroActual === 'BAJO') filtrados = filtrados.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 4);
+      else if (categoriaFiltroActual === 'AGOTADO') filtrados = filtrados.filter(p => Number(p.stock) <= 0);
 
       const modoOrden = document.getElementById('ordenInventario').value;
       filtrados.sort((a, b) => {
@@ -1551,6 +1568,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         if (errorMovimiento) alert('El producto se creó, pero no se pudo guardar su movimiento. Ejecuta la configuración SQL del historial y vuelve a registrar la compra si corresponde.');
         document.getElementById('formStock').reset();
         toggleCamposStock();
+        cerrarModalCrearProducto();
         cargarTodo();
       }
     });

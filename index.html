@@ -159,8 +159,12 @@
 
       <!-- TAB STOCK -->
       <div id="tab-stock" class="card hidden">
-        <div id="secCrearProducto" class="hidden">
-          <h3>➕ Crear Nuevo Producto / Lote de Decants</h3>
+        <div id="secCrearProducto" class="hidden inventory-create-overlay" onclick="if(event.target === this) cerrarModalCrearProducto()">
+          <section class="inventory-create-panel" role="dialog" aria-modal="true" aria-labelledby="tituloCrearProducto">
+          <div class="inventory-create-heading">
+            <div><p class="traslado-etiqueta">GESTIÓN DE INVENTARIO</p><h3 id="tituloCrearProducto">Añadir nuevo producto</h3><p>Completa los datos para registrar un producto o un nuevo lote.</p></div>
+            <button type="button" class="traslado-cerrar" aria-label="Cerrar" onclick="cerrarModalCrearProducto()">×</button>
+          </div>
           <form id="formStock">
             <div class="form-group">
               <label>Tipo de registro</label>
@@ -241,9 +245,10 @@
 
             <button type="submit">Guardar en Inventario</button>
           </form>
+          </section>
         </div>
 
-        <div class="inventory-heading"><h3>📦 Catálogo e Inventario</h3><span>Control rápido de stock, ubicación y precios</span></div>
+        <div class="inventory-heading"><div><h3>📦 Catálogo e Inventario</h3><span>Control rápido de stock, ubicación y precios</span></div><button type="button" id="btnAbrirCrearProducto" class="btn-add hidden" onclick="abrirModalCrearProducto()">＋ Añadir nuevo producto</button></div>
 
         <div class="inv-summary-grid">
           <div class="inv-summary-card">
