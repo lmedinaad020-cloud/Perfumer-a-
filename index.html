@@ -413,10 +413,10 @@
       </div>
     </div>
 
-    <!-- MODAL SELECCIÓN PERFUME DE REGALO (3ML) -->
+    <!-- MODAL SELECCIÓN PERFUME Y TAMAÑO DEL DECANT DE REGALO -->
     <div id="modalRegaloPerfume" class="modal-overlay hidden">
       <div class="modal-content" style="max-width: 450px; text-align: left;">
-        <h4 style="margin:0 0 8px; color:var(--gold-light); text-align:center;">🎁 Seleccionar Decant de Regalo (3ml)</h4>
+        <h4 id="tituloRegaloDecant" style="margin:0 0 8px; color:var(--gold-light); text-align:center;">🎁 Seleccionar Decant de Regalo</h4>
         <p style="font-size:0.8rem; text-align:center; margin-bottom:12px; color:var(--muted);">Escribe para buscar el perfume disponible para el regalito:</p>
         
         <div class="form-group">
@@ -430,6 +430,15 @@
           <select id="selectRegaloModal" onchange="mostrarPreviewRegaloModal()"></select>
         </div>
 
+        <div class="form-group">
+          <label for="tamanoRegaloModal">Tamaño del decant de regalo</label>
+          <select id="tamanoRegaloModal" onchange="mostrarPreviewRegaloModal()">
+            <option value="3ml">3 ml</option>
+            <option value="5ml">5 ml</option>
+            <option value="10ml">10 ml</option>
+          </select>
+        </div>
+
         <div id="previewRegaloCard" class="preview-card hidden" style="margin-top:10px;">
           <img id="imgRegaloPreview" src="" alt="Perfume Regalo" onerror="this.src='https://static.vecteezy.com/system/resources/thumbnails/067/553/667/small/minimalist-graphic-illustration-of-a-bottle-useful-for-beauty-wellness-or-container-themes-simplicity-and-clean-design-enhance-visual-impact-vector.jpg'">
           <div>
@@ -439,7 +448,7 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-top:16px;">
-          <button type="button" onclick="confirmarRegaloDecant3ml()" style="background:linear-gradient(135deg, #28a745, #1e7e34); border-color:#28a745; font-size:0.85rem;">🎁 Confirmar Regalo</button>
+          <button type="button" onclick="confirmarRegaloDecant()" style="background:linear-gradient(135deg, #28a745, #1e7e34); border-color:#28a745; font-size:0.85rem;">🎁 Confirmar Regalo</button>
           <button type="button" onclick="cerrarModalRegalo()" class="btn-sec" style="font-size:0.85rem;">Cancelar</button>
         </div>
       </div>

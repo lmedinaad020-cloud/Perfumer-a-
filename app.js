@@ -1349,6 +1349,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       }
 
       document.getElementById('regaloBuscador').value = '';
+      document.getElementById('tamanoRegaloModal').value = '3ml';
+      document.getElementById('tituloRegaloDecant').innerText = '🎁 Seleccionar Decant de Regalo (3 ml)';
       filtrarRegalosModal();
       document.getElementById('modalRegaloPerfume').classList.remove('hidden');
     }
@@ -1370,7 +1372,9 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
     function mostrarPreviewRegaloModal() {
       const regaloId = document.getElementById('selectRegaloModal').value;
+      const tamano = document.getElementById('tamanoRegaloModal').value;
       const cardPreview = document.getElementById('previewRegaloCard');
+      document.getElementById('tituloRegaloDecant').innerText = `🎁 Seleccionar Decant de Regalo (${tamano.replace('ml', ' ml')})`;
 
       if (!regaloId) {
         cardPreview.classList.add('hidden');
@@ -1379,7 +1383,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       const perfume = listaProductos.find(p => p.id == regaloId);
       if (perfume) {
-        document.getElementById('nombreRegaloPreview').innerText = `${perfume.nombre} (Regalo Decant 3ml)`;
+        document.getElementById('nombreRegaloPreview').innerText = `${perfume.nombre} (Regalo Decant ${tamano})`;
         document.getElementById('stockRegaloPreview').innerText = `Stock disponible: ${perfume.stock} frascos`;
         document.getElementById('imgRegaloPreview').src = perfume.imagen_url || IMG_DEFAULT;
         cardPreview.classList.remove('hidden');
@@ -1392,7 +1396,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       document.getElementById('modalRegaloPerfume').classList.add('hidden');
     }
 
-    function confirmarRegaloDecant3ml() {
+    function confirmarRegaloDecant() {
       const regaloId = document.getElementById('selectRegaloModal').value;
       if (!regaloId) {
         alert('Por favor selecciona un perfume para el regalo.');
@@ -1402,24 +1406,26 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const perfumeRegalo = listaProductos.find(p => p.id == regaloId);
       if (!perfumeRegalo) return;
 
-      const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === '3ml');
+      const tamanoRegalo = document.getElementById('tamanoRegaloModal').value;
+      const mlRegalo = parseInt(tamanoRegalo, 10);
+      const vacioRegalo = listaProductos.find(p => p.tipo === 'Decant Vacío' && p.tamano === tamanoRegalo);
       let costoVacio = 0;
       if (vacioRegalo) {
         costoVacio = parseFloat(vacioRegalo.precio || 0);
         if (vacioRegalo.stock < 1) {
-          alert('⚠️ Nota: No quedan envases vacíos de 3ml registrados en el inventario para el regalo.');
+          alert(`⚠️ Nota: No quedan envases vacíos de ${tamanoRegalo} registrados en el inventario para el regalo.`);
         }
       }
 
       const mlBase = parseInt(perfumeRegalo.tamano) || 100;
-      const costoLiquido3ml = (parseFloat(perfumeRegalo.precio || 0) / mlBase) * 3;
-      const costoRegaloTotal = costoLiquido3ml + costoVacio;
+      const costoLiquido = (parseFloat(perfumeRegalo.precio || 0) / mlBase) * mlRegalo;
+      const costoRegaloTotal = costoLiquido + costoVacio;
 
       const regaloItem = {
         producto_id: perfumeRegalo.id,
-        nombre: `🎁 REGALO: Decant 3ml (${perfumeRegalo.nombre})`,
+        nombre: `🎁 REGALO: Decant ${tamanoRegalo} (${perfumeRegalo.nombre})`,
         tipo: 'Decant',
-        tamano: '3ml',
+        tamano: tamanoRegalo,
         cantidad: 1,
         precio_unitario: 0.00,
         costo_unitario: costoRegaloTotal,
@@ -1434,7 +1440,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       guardarBorradorVenta();
       cerrarModalRegalo();
       renderizarCarrito();
-      alert(`¡Decant de 3ml de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
+      alert(`¡Decant de ${tamanoRegalo} de "${perfumeRegalo.nombre}" agregado como REGALO (S/ 0.00)!`);
     }
 
     function ajustarCantidadCarrito(indice, cambio) {
