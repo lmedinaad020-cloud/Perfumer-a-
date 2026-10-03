@@ -336,6 +336,13 @@
   .inventory-create-heading { padding-right:38px; }
   .inventory-create-heading .traslado-cerrar { position:fixed; top:10px; right:10px; }
 }
+.cash-note-editor { margin-bottom:12px; padding:12px; border:1px solid rgba(241,195,109,.25); border-radius:10px; background:rgba(201,144,54,.08); }
+.cash-note-editor label { color:var(--gold-light); }
+.cash-note-editor textarea { width:100%; min-height:76px; resize:vertical; }
+.cash-note-editor button { width:auto; min-width:150px; margin-top:8px; padding:8px 14px; }
+.cash-note-readonly { margin-bottom:12px; padding:11px 13px; border-left:3px solid var(--gold); border-radius:0 8px 8px 0; background:rgba(201,144,54,.1); color:var(--ivory); overflow-wrap:anywhere; }
+.cash-note-readonly strong { color:var(--gold-light); }
+@media(max-width:520px) { .cash-note-editor button { width:100%; } }
 @media(max-width:360px) {
   .inventory-summary { grid-template-columns:minmax(0,1fr) repeat(3,minmax(42px,.3fr)) 14px; gap:4px; padding:8px; }
   .inventory-summary-title strong { font-size:.8rem; }
