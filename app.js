@@ -1959,11 +1959,12 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             const cantidad = Number(detalle.cantidad) || 1;
             const precioUnitario = Number(detalle.precio_unitario) || 0;
             const cobrado = Number(detalle.subtotal ?? (precioUnitario * cantidad)) || 0;
+            let productoImagen = catalogo.find(p => String(p.id) === String(detalle.producto_id)) ||
+              catalogo.find(p => p.nombre?.toLowerCase() === (detalle.nombre || '').toLowerCase());
             let costoProductoUnitario = Number(detalle.costo_unitario) || 0;
             let costoEnvaseUnitario = 0;
             if (detalle.tipo === 'Decant') {
-              const perfume = catalogo.find(p => String(p.id) === String(detalle.producto_id)) ||
-                catalogo.find(p => p.nombre?.toLowerCase() === (detalle.nombre || '').toLowerCase());
+              const perfume = productoImagen;
               const ml = parseInt(detalle.tamano) || 3;
               const mlBase = parseInt(perfume?.tamano) || 100;
               costoProductoUnitario = perfume
@@ -1976,6 +1977,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             return {
               nombre: detalle.nombre,
               tipo: detalle.tipo === 'Decant' ? `Decant ${detalle.tamano}` : detalle.tipo === 'Decant Vacío' ? `Envase vacío ${detalle.tamano}` : 'Perfume',
+              imagen: detalle.imagen_url || productoImagen?.imagen_url || IMG_DEFAULT,
+              esDecant: detalle.tipo === 'Decant',
               cantidad, cobrado, costoProducto, costoEnvase,
               costoLinea: costoProducto + costoEnvase
             };
@@ -1984,7 +1987,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             ? lineasDetalle.reduce((total, linea) => total + linea.costoLinea, 0)
             : Number(v.monto_total || 0) - item.gananciaNetaCalculada;
           const desgloseHTML = lineasDetalle.length
-            ? lineasDetalle.map(linea => `<div style="padding:8px 0;border-bottom:1px solid var(--border);"><strong>${linea.cantidad}× ${escaparHTML(linea.nombre)} <span style="color:var(--muted);font-weight:400;">(${escaparHTML(linea.tipo)})</span></strong><div style="font-size:.76rem;margin-top:4px;">Cobrado: S/ ${linea.cobrado.toFixed(2)}${esUsuarioAdmin ? ` · Costo producto: S/ ${linea.costoProducto.toFixed(2)}${linea.costoEnvase ? ` · Envase: S/ ${linea.costoEnvase.toFixed(2)}` : ''} · Costo total: S/ ${linea.costoLinea.toFixed(2)}` : ''}</div></div>`).join('')
+            ? lineasDetalle.map(linea => `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);"><img src="${escaparHTML(linea.imagen)}" alt="${escaparHTML(linea.nombre)}" loading="lazy" onerror="this.onerror=null;this.src='${IMG_DEFAULT}'" style="width:68px;height:68px;object-fit:cover;border-radius:9px;border:1px solid var(--border);flex:0 0 auto;"><div style="min-width:0;"><strong>${linea.cantidad}× ${escaparHTML(linea.nombre)}</strong>${linea.esDecant ? `<div style="display:inline-block;margin:4px 0;padding:4px 9px;border-radius:5px;background:var(--gold-light);color:#16202b;font-size:.88rem;font-weight:900;letter-spacing:.05em;">DECANT ${escaparHTML(linea.tipo.replace(/^Decant\s*/i, ''))}</div>` : `<div style="font-size:.75rem;color:var(--muted);">${escaparHTML(linea.tipo)}</div>`}<div style="font-size:.76rem;margin-top:4px;">Cobrado: S/ ${linea.cobrado.toFixed(2)}${esUsuarioAdmin ? ` · Costo producto: S/ ${linea.costoProducto.toFixed(2)}${linea.costoEnvase ? ` · Envase: S/ ${linea.costoEnvase.toFixed(2)}` : ''} · Costo total: S/ ${linea.costoLinea.toFixed(2)}` : ''}</div></div></div>`).join('')
             : '<p style="margin:0;font-size:.78rem;color:var(--muted);">Esta venta no tiene productos desglosados.</p>';
 
           return `
