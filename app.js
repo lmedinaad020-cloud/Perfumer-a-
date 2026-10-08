@@ -2180,6 +2180,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       const esUsuarioAdmin = esAdmin();
       const txtTitulo = document.getElementById('txtTituloGrafico');
+      const controlesMetasAdmin = document.getElementById('controlesMetasAdmin');
+      if (controlesMetasAdmin) controlesMetasAdmin.classList.toggle('hidden', !esUsuarioAdmin);
       
       if (txtTitulo) {
         txtTitulo.innerText = '📈 Rendimiento Diario de Ventas vs Meta';

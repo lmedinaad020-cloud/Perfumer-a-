@@ -312,7 +312,7 @@
         <!-- GRÁFICO 1: DIARIO DE VENTAS -->
         <div class="chart-container">
           <h4 id="txtTituloGrafico" style="margin:0 0 10px; color:var(--gold-light); font-size:0.9rem; text-align:center;">📈 Rendimiento Diario vs Metas</h4>
-          <div style="display:flex; justify-content:center; align-items:end; flex-wrap:wrap; gap:8px; margin:0 0 12px;">
+          <div id="controlesMetasAdmin" class="hidden" style="display:flex; justify-content:center; align-items:end; flex-wrap:wrap; gap:8px; margin:0 0 12px;">
             <div><label for="fechaMetaDiaria" style="display:block; font-size:0.75rem;">Fecha de la meta</label><input type="date" id="fechaMetaDiaria" onchange="cargarMetaEnFormulario()"></div>
             <div><label for="montoMetaDiaria" style="display:block; font-size:0.75rem;">Meta (S/)</label><input type="number" id="montoMetaDiaria" min="0" step="0.01" value="500" style="width:110px;"></div>
             <button type="button" class="btn-sec" onclick="guardarMetaDiaria()">Guardar meta</button>
