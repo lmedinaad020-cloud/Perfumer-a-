@@ -42,8 +42,51 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     let perfumesRegaloFiltrados = [];
 
     const PUNTO_EQUILIBRIO = 140;
-    const META_DIARIA = 199;
+    const META_DIARIA = 500;
+    const META_DIARIA_ANTERIOR = 199;
+    const METAS_DIARIAS_STORAGE = 'alpha-metas-diarias';
+    let metasDiarias = cargarMetasDiarias();
     let avisoMetaVentasFecha = null;
+
+    function cargarMetasDiarias() {
+      try {
+        const guardadas = JSON.parse(localStorage.getItem(METAS_DIARIAS_STORAGE) || '{}');
+        return guardadas && typeof guardadas === 'object' && !Array.isArray(guardadas) ? guardadas : {};
+      } catch (error) {
+        console.warn('No se pudieron cargar las metas diarias:', error);
+        return {};
+      }
+    }
+
+    function obtenerMetaDiaria(fecha) {
+      if (Object.prototype.hasOwnProperty.call(metasDiarias, fecha)) return Number(metasDiarias[fecha]);
+      return fecha >= fechaLocalClave() ? META_DIARIA : META_DIARIA_ANTERIOR;
+    }
+
+    function cargarMetaEnFormulario() {
+      const fecha = document.getElementById('fechaMetaDiaria')?.value;
+      const campoMonto = document.getElementById('montoMetaDiaria');
+      if (fecha && campoMonto) campoMonto.value = obtenerMetaDiaria(fecha);
+    }
+
+    function guardarMetaDiaria() {
+      const fecha = document.getElementById('fechaMetaDiaria')?.value;
+      const monto = Number(document.getElementById('montoMetaDiaria')?.value);
+      if (!fecha || !Number.isFinite(monto) || monto < 0) return alert('Ingresa una fecha y una meta válida.');
+      metasDiarias[fecha] = monto;
+      localStorage.setItem(METAS_DIARIAS_STORAGE, JSON.stringify(metasDiarias));
+      renderizarGraficoVentas(ultimoGruposVentas || {});
+    }
+
+    function quitarMetaDiaria() {
+      const fecha = document.getElementById('fechaMetaDiaria')?.value;
+      if (!fecha) return alert('Selecciona la fecha que quieres restablecer.');
+      delete metasDiarias[fecha];
+      localStorage.setItem(METAS_DIARIAS_STORAGE, JSON.stringify(metasDiarias));
+      renderizarGraficoVentas(ultimoGruposVentas || {});
+    }
+
+    let ultimoGruposVentas = {};
 
     function fechaLocalClave(fecha = new Date()) {
       return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
@@ -93,7 +136,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         return;
       }
       const totalDia = (data || []).reduce((suma, venta) => suma + Number(venta.monto_total || 0), 0);
-      if (totalDia < META_DIARIA) return;
+      if (totalDia < obtenerMetaDiaria(hoy)) return;
       avisoMetaVentasFecha = hoy;
       const mensaje = `¡Meta de ventas alcanzada! Hoy se vendieron S/ ${totalDia.toFixed(2)}.`;
       if (audioVentaFinalizado) await audioVentaFinalizado;
@@ -2082,6 +2125,13 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const ctx = document.getElementById('chartVentasDiarias');
       if (!ctx) return;
 
+      ultimoGruposVentas = grupos || {};
+      const campoFechaMeta = document.getElementById('fechaMetaDiaria');
+      if (campoFechaMeta && !campoFechaMeta.value) {
+        campoFechaMeta.value = fechaLocalClave();
+        cargarMetaEnFormulario();
+      }
+
       const esUsuarioAdmin = esAdmin();
       const txtTitulo = document.getElementById('txtTituloGrafico');
       
@@ -2092,9 +2142,10 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const clavesOrdenadas = Object.keys(grupos).sort();
       const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
       const dataGanancias = clavesOrdenadas.map(c => esUsuarioAdmin ? grupos[c].gananciaNetaTotal : grupos[c].totalGanado);
+      const metas = clavesOrdenadas.map(fecha => obtenerMetaDiaria(fecha));
 
-      const coloresBarras = dataGanancias.map(valor => {
-        if (valor >= META_DIARIA) return '#85b88f';
+      const coloresBarras = dataGanancias.map((valor, indice) => {
+        if (valor >= metas[indice]) return '#85b88f';
         if (valor >= PUNTO_EQUILIBRIO) return '#f1c36d';
         return '#d99076';
       });
@@ -2114,6 +2165,17 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             borderColor: 'rgba(226, 177, 86, 0.6)',
             borderWidth: 1,
             borderRadius: 6
+          }, {
+            type: 'line',
+            label: 'Meta diaria (S/)',
+            data: metas,
+            borderColor: '#85b88f',
+            backgroundColor: '#85b88f',
+            borderWidth: 2,
+            borderDash: [4, 4],
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            tension: 0
           }]
         },
         options: {
@@ -2124,6 +2186,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             tooltip: {
               callbacks: {
                 label: function(context) {
+                  if (context.dataset.label === 'Meta diaria (S/)') return ` Meta: S/ ${context.parsed.y.toFixed(2)}`;
                   return ` ${esUsuarioAdmin ? 'Margen' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
                 }
               }
@@ -2143,22 +2206,6 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
                     position: 'start',
                     backgroundColor: 'rgba(3, 26, 52, 0.8)',
                     color: '#efc66e',
-                    font: { size: 10 }
-                  }
-                },
-                lineMeta: {
-                  type: 'line',
-                  yMin: META_DIARIA,
-                  yMax: META_DIARIA,
-                  borderColor: '#85b88f',
-                  borderWidth: 2,
-                  borderDash: [4, 4],
-                  label: {
-                    display: true,
-                    content: `Meta: S/ ${META_DIARIA}`,
-                    position: 'end',
-                    backgroundColor: 'rgba(3, 26, 52, 0.8)',
-                    color: '#85b88f',
                     font: { size: 10 }
                   }
                 }
