@@ -1089,11 +1089,12 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const itemTipoVal = document.getElementById('itemTipo').value;
       const query = document.getElementById('itemBuscador').value.toLowerCase().trim();
       const isDecant = itemTipoVal === 'Decant';
+      const esPerfumeAbierto = itemTipoVal === 'Perfume Abierto';
       const esEnvaseVacio = itemTipoVal === 'Decant Vacío';
       
       document.getElementById('grpTamano').classList.toggle('hidden', !isDecant);
       
-      const tipo = isDecant ? 'Perfume para Decant' : (esEnvaseVacio ? 'Decant Vacío' : 'Perfume Sellado');
+      const tipo = (isDecant || esPerfumeAbierto) ? 'Perfume para Decant' : (esEnvaseVacio ? 'Decant Vacío' : 'Perfume Sellado');
       const ubicacion = document.getElementById('vtaCanal').value;
       const filtrados = listaProductos.filter(p => p.tipo === tipo && p.stock > 0 && p.nombre.toLowerCase().includes(query) && (esEnvaseVacio || (p.ubicacion_stock || 'Tienda Local') === ubicacion));
       
@@ -1101,7 +1102,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const perfumeSeleccionado = selectPerfume.value;
       const productoAnterior = listaProductos.find(p => String(p.id) === String(perfumeSeleccionado));
       if (filtrados.length === 0) {
-        selectPerfume.innerHTML = `<option value="">${isDecant ? 'Sin perfumes abiertos' : (esEnvaseVacio ? 'Sin decants vacíos' : 'Sin perfumes sellados')}${esEnvaseVacio ? '' : ` con stock en ${ubicacion}`}</option>`;
+        selectPerfume.innerHTML = `<option value="">${(isDecant || esPerfumeAbierto) ? 'Sin perfumes abiertos' : (esEnvaseVacio ? 'Sin decants vacíos' : 'Sin perfumes sellados')}${esEnvaseVacio ? '' : ` con stock en ${ubicacion}`}</option>`;
       } else {
         selectPerfume.innerHTML = filtrados.map(p => `<option value="${p.id}">${p.nombre} [${p.tamano || '100ml'}] (Stock: ${p.stock})</option>`).join('');
         const mismoPerfume = productoAnterior && filtrados.find(p =>
@@ -1142,7 +1143,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         return parseFloat(precioPersonalizado) || 0;
       }
 
-      if (tipoVenta === 'Perfume Sellado') {
+      if (tipoVenta === 'Perfume Sellado' || tipoVenta === 'Perfume Abierto') {
         return parseFloat(perfumeObj.precio_sugerido || 0);
       }
 
@@ -1204,7 +1205,9 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         const precioAuto = tipoVenta === 'Decant Vacío' ? parseFloat(perfume.precio_sugerido || 0) : obtenerPrecioSugeridoVenta(perfume, tipoVenta, tamanoDecant);
 
         document.getElementById('prevNombre').innerText = `${perfume.nombre} (${tipoVenta === 'Decant' ? tamanoDecant : (perfume.tamano || '100ml')})`;
-        const stockLabel = tipoVenta === 'Decant' ? `${Number(perfume.ml_restantes ?? (perfume.stock * (parseInt(perfume.tamano) || 100))).toFixed(1)} ml restantes · ${perfume.ubicacion_stock || 'Tienda Local'}` : `${perfume.stock} unidades`;
+        const stockLabel = tipoVenta === 'Decant' || tipoVenta === 'Perfume Abierto'
+          ? `${Number(perfume.ml_restantes ?? (perfume.stock * (parseInt(perfume.tamano) || 100))).toFixed(1)} ml restantes · ${perfume.ubicacion_stock || 'Tienda Local'}`
+          : `${perfume.stock} unidades`;
         document.getElementById('prevStock').innerText = `Stock disponible: ${stockLabel} | PVP Sugerido: S/ ${precioAuto.toFixed(2)}`;
         document.getElementById('prevImg').src = perfume.imagen_url || IMG_DEFAULT;
         cardPreview.classList.remove('hidden');
@@ -1386,6 +1389,9 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       }
 
       if (tipoVenta === 'Decant') {
+        if (carritoVenta.some(i => i.tipo === 'Perfume Abierto' && String(i.producto_id) === String(perfumeObj.id))) {
+          return alert('Ya agregaste este frasco entero al carrito; no puedes agregar decants del mismo frasco.');
+        }
         const mlRestantes = Number(perfumeObj.ml_restantes ?? (perfumeObj.stock * (parseInt(perfumeObj.tamano) || 100)));
         const mlNecesarios = (parseInt(tamanoDecant) || 3) * cantidad;
         const enCarritoMismoFrasco = carritoVenta.filter(i => i.tipo === 'Decant' && String(i.producto_id) === String(perfumeObj.id)).reduce((s, i) => s + (parseInt(i.tamano) || 3) * Number(i.cantidad || 0), 0);
@@ -1400,11 +1406,26 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       if (tipoVenta === 'Perfume Sellado' && perfumeObj.stock < cantidad) {
         return alert(`Stock insuficiente. Solo quedan ${perfumeObj.stock} unidades de ${perfumeObj.nombre}.`);
       }
+      let mlFrascoAbiertoVendido = 0;
+      if (tipoVenta === 'Perfume Abierto') {
+        if (cantidad !== 1) return alert('Cada frasco abierto se vende de uno en uno.');
+        if (carritoVenta.some(i => i.tipo === 'Perfume Abierto' && String(i.producto_id) === String(perfumeObj.id))) {
+          return alert('Este frasco abierto ya está agregado al carrito.');
+        }
+        const mlRestantes = Number(perfumeObj.ml_restantes ?? (perfumeObj.stock * (parseInt(perfumeObj.tamano) || 100)));
+        const mlEnDecants = carritoVenta.filter(i => i.tipo === 'Decant' && String(i.producto_id) === String(perfumeObj.id))
+          .reduce((suma, i) => suma + (parseInt(i.tamano) || 3) * Number(i.cantidad || 0), 0);
+        mlFrascoAbiertoVendido = mlRestantes - mlEnDecants;
+        if (mlFrascoAbiertoVendido <= 0) return alert('Este frasco ya no tiene perfume disponible para vender.');
+      }
 
       let costoUnitarioFinal = 0;
 
       if (tipoVenta === 'Perfume Sellado') {
         costoUnitarioFinal = parseFloat(perfumeObj.precio || 0);
+      } else if (tipoVenta === 'Perfume Abierto') {
+        const mlBase = parseInt(perfumeObj.tamano) || 100;
+        costoUnitarioFinal = (parseFloat(perfumeObj.precio || 0) / mlBase) * mlFrascoAbiertoVendido;
       } else if (tipoVenta === 'Decant Vacío') {
         costoUnitarioFinal = parseFloat(perfumeObj.precio || 0);
       } else {
@@ -1424,8 +1445,9 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         producto_id: perfumeObj.id,
         nombre: perfumeObj.nombre,
         tipo: tipoVenta,
-        tamano: tipoVenta === 'Decant' ? tamanoDecant : (perfumeObj.tamano || 'Frasco Entero'),
+        tamano: tipoVenta === 'Decant' ? tamanoDecant : tipoVenta === 'Perfume Abierto' ? `${mlFrascoAbiertoVendido.toFixed(1)}ml restantes` : (perfumeObj.tamano || 'Frasco Entero'),
         cantidad: cantidad,
+        ...(tipoVenta === 'Perfume Abierto' ? { ml_vendido: mlFrascoAbiertoVendido } : {}),
         precio_unitario: precioVentaCobrado,
         costo_unitario: costoUnitarioFinal,
         subtotal: cantidad * precioVentaCobrado,
@@ -1433,7 +1455,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         imagen_url: perfumeObj.imagen_url,
         es_regalo: false
       };
-      if (tipoVenta === 'Decant') item.ubicacion_stock = perfumeObj.ubicacion_stock || 'Tienda Local';
+      if (tipoVenta === 'Decant' || tipoVenta === 'Perfume Abierto') item.ubicacion_stock = perfumeObj.ubicacion_stock || 'Tienda Local';
 
       carritoVenta.push(item);
       guardarBorradorVenta();
@@ -1562,6 +1584,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       if (!item) return;
       const nuevaCantidad = Number(item.cantidad) + cambio;
       if (nuevaCantidad < 1) return;
+      if (item.tipo === 'Perfume Abierto' && nuevaCantidad > 1) return alert('Cada frasco abierto se vende de uno en uno.');
 
       if (item.tipo === 'Perfume Sellado' || item.tipo === 'Decant Vacío') {
         const producto = listaProductos.find(p => p.id == item.producto_id);
@@ -1737,6 +1760,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         }
         if (productoId !== null) cantidades.set(productoId, (cantidades.get(productoId) || 0) + Number(item.cantidad || 0));
         if (item.tipo === 'Decant') consumosMl.set(item.producto_id, (consumosMl.get(item.producto_id) || 0) + (parseInt(item.tamano) || 3) * Number(item.cantidad || 0));
+        else if (item.tipo === 'Perfume Abierto') consumosMl.set(item.producto_id, (consumosMl.get(item.producto_id) || 0) + Number(item.ml_vendido || 0));
       });
       const reservas = [];
       try {
@@ -1920,7 +1944,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       const conteoProductos = new Map();
       ventas.forEach(v => (Array.isArray(v.detalles) ? v.detalles : []).forEach(item => {
         if (item.es_regalo) return;
-        const etiquetaTipo = item.tipo === 'Decant' ? `Decant ${item.tamano}` : item.tipo === 'Perfume Sellado' ? 'Perfume entero' : item.tipo === 'Decant Vacío' ? `Decant vacío ${item.tamano}` : null;
+        const etiquetaTipo = item.tipo === 'Decant' ? `Decant ${item.tamano}` : item.tipo === 'Perfume Abierto' ? 'Perfume abierto entero' : item.tipo === 'Perfume Sellado' ? 'Perfume entero' : item.tipo === 'Decant Vacío' ? `Decant vacío ${item.tamano}` : null;
         if (!etiquetaTipo) return;
         const llave = `${item.nombre}|||${etiquetaTipo}`;
         const actual = conteoProductos.get(llave) || { nombre: item.nombre, tipo: etiquetaTipo, unidades: 0 };
@@ -2060,7 +2084,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             const costoEnvase = costoEnvaseUnitario * cantidad;
             return {
               nombre: detalle.nombre,
-              tipo: detalle.tipo === 'Decant' ? `Decant ${detalle.tamano}` : detalle.tipo === 'Decant Vacío' ? `Envase vacío ${detalle.tamano}` : 'Perfume',
+              tipo: detalle.tipo === 'Decant' ? `Decant ${detalle.tamano}` : detalle.tipo === 'Perfume Abierto' ? 'Perfume abierto (frasco entero)' : detalle.tipo === 'Decant Vacío' ? `Envase vacío ${detalle.tamano}` : 'Perfume',
               imagen: detalle.imagen_url || productoImagen?.imagen_url || IMG_DEFAULT,
               esDecant: detalle.tipo === 'Decant',
               cantidad, cobrado, costoProducto, costoEnvase,
@@ -2132,14 +2156,15 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
 
       if (Array.isArray(ventaObj.detalles)) {
         for (const item of ventaObj.detalles) {
-          if (item.tipo === 'Decant') {
+          if (item.tipo === 'Decant' || item.tipo === 'Perfume Abierto') {
             const { data: perfume } = await client.from('productos').select('ml_restantes,stock,tamano').eq('id', item.producto_id).maybeSingle();
             if (perfume) {
               const mlActual = Number(perfume.ml_restantes ?? (Number(perfume.stock) * (parseInt(perfume.tamano) || 100)));
-              const mlDevueltos = mlActual + (parseInt(item.tamano) || 3) * Number(item.cantidad || 1);
+              const mlVendidos = item.tipo === 'Perfume Abierto' ? Number(item.ml_vendido || 0) : (parseInt(item.tamano) || 3) * Number(item.cantidad || 1);
+              const mlDevueltos = mlActual + mlVendidos;
               await client.from('productos').update({ ml_restantes: mlDevueltos, stock: mlDevueltos > 0 ? 1 : 0 }).eq('id', item.producto_id);
             }
-            const envase = buscarEnvaseDecantDisponible(item.tamano);
+            const envase = item.tipo === 'Decant' ? buscarEnvaseDecantDisponible(item.tamano) : null;
             if (envase) {
               const { data: envaseActual } = await client.from('productos').select('stock').eq('id', envase.id).maybeSingle();
               if (envaseActual) await client.from('productos').update({ stock: Number(envaseActual.stock) + Number(item.cantidad || 1) }).eq('id', envase.id);
