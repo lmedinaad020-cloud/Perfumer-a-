@@ -46,6 +46,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
     const META_DIARIA_ANTERIOR = 199;
     const METAS_DIARIAS_STORAGE = 'alpha-metas-diarias';
     let metasDiarias = cargarMetasDiarias();
+    const EQUILIBRIOS_DIARIOS_STORAGE = 'alpha-equilibrios-diarios';
+    let equilibriosDiarios = cargarEquilibriosDiarios();
     let avisoMetaVentasFecha = null;
 
     function cargarMetasDiarias() {
@@ -63,10 +65,49 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
       return fecha >= fechaLocalClave() ? META_DIARIA : META_DIARIA_ANTERIOR;
     }
 
+    function cargarEquilibriosDiarios() {
+      try {
+        const guardados = JSON.parse(localStorage.getItem(EQUILIBRIOS_DIARIOS_STORAGE) || '{}');
+        return guardados && typeof guardados === 'object' && !Array.isArray(guardados) ? guardados : {};
+      } catch (error) {
+        console.warn('No se pudieron cargar los puntos de equilibrio diarios:', error);
+        return {};
+      }
+    }
+
+    function obtenerPuntoEquilibrioDiario(fecha) {
+      return Object.prototype.hasOwnProperty.call(equilibriosDiarios, fecha)
+        ? Number(equilibriosDiarios[fecha])
+        : PUNTO_EQUILIBRIO;
+    }
+
     function cargarMetaEnFormulario() {
       const fecha = document.getElementById('fechaMetaDiaria')?.value;
       const campoMonto = document.getElementById('montoMetaDiaria');
       if (fecha && campoMonto) campoMonto.value = obtenerMetaDiaria(fecha);
+    }
+
+    function cargarEquilibrioEnFormulario() {
+      const fecha = document.getElementById('fechaEquilibrioDiario')?.value;
+      const campoMonto = document.getElementById('montoEquilibrioDiario');
+      if (fecha && campoMonto) campoMonto.value = obtenerPuntoEquilibrioDiario(fecha);
+    }
+
+    function guardarPuntoEquilibrioDiario() {
+      const fecha = document.getElementById('fechaEquilibrioDiario')?.value;
+      const monto = Number(document.getElementById('montoEquilibrioDiario')?.value);
+      if (!fecha || !Number.isFinite(monto) || monto < 0) return alert('Ingresa una fecha y un punto de equilibrio válido.');
+      equilibriosDiarios[fecha] = monto;
+      localStorage.setItem(EQUILIBRIOS_DIARIOS_STORAGE, JSON.stringify(equilibriosDiarios));
+      renderizarGraficoVentas(ultimoGruposVentas || {});
+    }
+
+    function quitarPuntoEquilibrioDiario() {
+      const fecha = document.getElementById('fechaEquilibrioDiario')?.value;
+      if (!fecha) return alert('Selecciona la fecha que quieres restablecer.');
+      delete equilibriosDiarios[fecha];
+      localStorage.setItem(EQUILIBRIOS_DIARIOS_STORAGE, JSON.stringify(equilibriosDiarios));
+      renderizarGraficoVentas(ultimoGruposVentas || {});
     }
 
     function guardarMetaDiaria() {
@@ -2131,22 +2172,28 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         campoFechaMeta.value = fechaLocalClave();
         cargarMetaEnFormulario();
       }
+      const campoFechaEquilibrio = document.getElementById('fechaEquilibrioDiario');
+      if (campoFechaEquilibrio && !campoFechaEquilibrio.value) {
+        campoFechaEquilibrio.value = fechaLocalClave();
+        cargarEquilibrioEnFormulario();
+      }
 
       const esUsuarioAdmin = esAdmin();
       const txtTitulo = document.getElementById('txtTituloGrafico');
       
       if (txtTitulo) {
-        txtTitulo.innerText = esUsuarioAdmin ? '📈 Rendimiento Diario (Margen de Contribución vs Metas)' : '📈 Rendimiento Diario de Ventas';
+        txtTitulo.innerText = '📈 Rendimiento Diario de Ventas vs Meta';
       }
 
       const clavesOrdenadas = Object.keys(grupos).sort();
       const labels = clavesOrdenadas.map(c => grupos[c].etiquetaCorta);
-      const dataGanancias = clavesOrdenadas.map(c => esUsuarioAdmin ? grupos[c].gananciaNetaTotal : grupos[c].totalGanado);
+      const dataGanancias = clavesOrdenadas.map(c => grupos[c].totalGanado);
       const metas = clavesOrdenadas.map(fecha => obtenerMetaDiaria(fecha));
+      const puntosEquilibrio = clavesOrdenadas.map(fecha => obtenerPuntoEquilibrioDiario(fecha));
 
       const coloresBarras = dataGanancias.map((valor, indice) => {
         if (valor >= metas[indice]) return '#85b88f';
-        if (valor >= PUNTO_EQUILIBRIO) return '#f1c36d';
+        if (valor >= puntosEquilibrio[indice]) return '#f1c36d';
         return '#d99076';
       });
 
@@ -2159,12 +2206,23 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         data: {
           labels: labels,
           datasets: [{
-            label: esUsuarioAdmin ? 'Margen de Contribución Diario (S/)' : 'Ventas Totales (S/)',
+            label: 'Ventas Totales (S/)',
             data: dataGanancias,
             backgroundColor: coloresBarras,
             borderColor: 'rgba(226, 177, 86, 0.6)',
             borderWidth: 1,
             borderRadius: 6
+          }, {
+            type: 'line',
+            label: 'Punto de equilibrio (S/)',
+            data: puntosEquilibrio,
+            borderColor: '#efc66e',
+            backgroundColor: '#efc66e',
+            borderWidth: 2,
+            borderDash: [6, 6],
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            tension: 0
           }, {
             type: 'line',
             label: 'Meta diaria (S/)',
@@ -2187,30 +2245,11 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
               callbacks: {
                 label: function(context) {
                   if (context.dataset.label === 'Meta diaria (S/)') return ` Meta: S/ ${context.parsed.y.toFixed(2)}`;
-                  return ` ${esUsuarioAdmin ? 'Margen' : 'Total Venta'}: S/ ${context.parsed.y.toFixed(2)}`;
+                  if (context.dataset.label === 'Punto de equilibrio (S/)') return ` Punto de equilibrio: S/ ${context.parsed.y.toFixed(2)}`;
+                  return ` Ventas: S/ ${context.parsed.y.toFixed(2)}`;
                 }
               }
             },
-            annotation: {
-              annotations: {
-                lineEquilibrio: {
-                  type: 'line',
-                  yMin: PUNTO_EQUILIBRIO,
-                  yMax: PUNTO_EQUILIBRIO,
-                  borderColor: '#efc66e',
-                  borderWidth: 2,
-                  borderDash: [6, 6],
-                  label: {
-                    display: true,
-                    content: `P. Equilibrio: S/ ${PUNTO_EQUILIBRIO}`,
-                    position: 'start',
-                    backgroundColor: 'rgba(3, 26, 52, 0.8)',
-                    color: '#efc66e',
-                    font: { size: 10 }
-                  }
-                }
-              }
-            }
           },
           scales: {
             y: {
