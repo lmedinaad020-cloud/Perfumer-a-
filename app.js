@@ -1427,7 +1427,7 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         const mlBase = parseInt(perfumeObj.tamano) || 100;
         costoUnitarioFinal = (parseFloat(perfumeObj.precio || 0) / mlBase) * mlFrascoAbiertoVendido;
       } else if (tipoVenta === 'Decant Vacío') {
-        costoUnitarioFinal = parseFloat(perfumeObj.precio || 0);
+        costoUnitarioFinal = obtenerCostoUnitarioEnvase(perfumeObj.tamano);
       } else {
         const precioBotella = parseFloat(perfumeObj.precio || 0);
         const mlBotellaBase = parseInt(perfumeObj.tamano) || 100;
@@ -1995,9 +1995,13 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
         let ganNeta = 0;
         const montoVenta = parseFloat(v.monto_total || 0);
 
-        if (Array.isArray(v.detalles) && v.detalles.some(item => item.tipo === 'Decant')) {
+        if (Array.isArray(v.detalles) && v.detalles.some(item => item.tipo === 'Decant' || item.tipo === 'Decant Vacío')) {
           const costoActualizado = v.detalles.reduce((total, item) => {
-            const costo = item.tipo === 'Decant' ? recalcularCostoDecant(item, catalogo) : (Number(item.costo_unitario) || 0);
+            const costo = item.tipo === 'Decant'
+              ? recalcularCostoDecant(item, catalogo)
+              : item.tipo === 'Decant Vacío'
+                ? obtenerCostoUnitarioEnvase(item.tamano, catalogo)
+                : (Number(item.costo_unitario) || 0);
             return total + costo * (parseInt(item.cantidad) || 1);
           }, 0);
           ganNeta = montoVenta - costoActualizado;
@@ -2010,8 +2014,12 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
             let cUnit = parseFloat(item.costo_unitario || 0);
             const cant = parseInt(item.cantidad) || 1;
             const pUnit = parseFloat(item.precio_unitario || 0);
+
+            if (item.tipo === 'Decant Vacío') {
+              cUnit = obtenerCostoUnitarioEnvase(item.tamano, catalogo);
+            }
             
-            if (cUnit === 0 || cUnit >= pUnit) {
+            if (item.tipo !== 'Decant Vacío' && (cUnit === 0 || cUnit >= pUnit)) {
               const prodObj = catalogo.find(p => p.id === item.producto_id) || 
                               catalogo.find(p => p.nombre.toLowerCase() === (item.nombre || '').toLowerCase());
               
@@ -2079,6 +2087,8 @@ const SUPABASE_URL = 'https://zmvuueizrehqibjjcbgd.supabase.co';
                 ? ((Number(perfume.precio) || 0) / mlBase) * ml
                 : Math.max(0, costoProductoUnitario - 1);
               costoEnvaseUnitario = obtenerCostoUnitarioEnvase(detalle.tamano, catalogo);
+            } else if (detalle.tipo === 'Decant Vacío') {
+              costoProductoUnitario = obtenerCostoUnitarioEnvase(detalle.tamano, catalogo);
             }
             const costoProducto = costoProductoUnitario * cantidad;
             const costoEnvase = costoEnvaseUnitario * cantidad;
